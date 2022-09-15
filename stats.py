@@ -429,6 +429,16 @@ def get_client_positions(demo, client_num):
             client_positions.append([math.inf]*3)
     return client_positions
 
+def is_sound_from_client_position(client_origin, sound_origin) -> bool:
+    assert len(client_origin) == len(sound_origin) == 3
+    # sounds are created at center of bounding box, see SV_StartSound
+    client_center = collision.PlayerBounds.center(client_origin)
+    max_diff = max(abs(x - y) for x, y in zip(client_center, sound_origin))
+    # can't check for equality as this does not seem to be accurate all the time
+    # for some reason... Perhaps the client origin can change slightly between
+    # an entity update and when the sound is created.
+    return max_diff < 1.5
+
 def find_closest_item_to_client(client_origin, items, block_index):
     closest_distance = math.inf
     closest_item = None
@@ -462,8 +472,8 @@ def get_changeable_collections(demo):
     changeable_collections = [[] for _ in range(len(demo.blocks))]
     for event in sound_pickup_events:
         client_origin = client_positions[event.block_index]
-        distance = max([abs(x-y) for x, y in zip(event.origin, client_origin)])
-        assert distance < 5.0  # this is so large due to SV_StartSound taking the middle of maxs and mins
+        assert is_sound_from_client_position(client_origin=client_origin,
+                                             sound_origin=event.origin)
 
         distance = math.inf
         closest_item, distance = find_closest_item_to_client(client_origin,
@@ -506,8 +516,8 @@ def get_backpack_collections(demo):
     backpack_collections = [[] for _ in range(len(demo.blocks))]
     for event in sound_pickup_events:
         client_origin = client_positions[event.block_index]
-        distance = max([abs(x-y) for x, y in zip(event.origin, client_origin)])
-        assert distance < 5.0  # this is so large due to SV_StartSound taking the middle of maxs and mins
+        assert is_sound_from_client_position(client_origin=client_origin,
+                                             sound_origin=event.origin)
 
         for backpack in backpacks_by_frame[event.block_index-1]:
             if collision.distance(collision.bounds_player(client_origin),
