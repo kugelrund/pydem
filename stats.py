@@ -747,10 +747,12 @@ def rebuild_stats(new_start: format.ClientStats,
 
 
 def fix_collection_events(actual_collections, demo):
-    _, sounds_precache = get_precaches(demo)
+    models_precache, sounds_precache = get_precaches(demo)
     changeable_collections = get_static_collections(demo)
     viewent_num = get_viewent_num(demo)
     client_positions = get_client_positions(demo, viewent_num)
+
+    static_collectables = get_static_collectables(demo, models_precache)
 
     blocks_to_remove = []
     for i, block in enumerate(demo.blocks):
@@ -780,9 +782,16 @@ def fix_collection_events(actual_collections, demo):
             flags = messages.UpdateFlags.SIGNAL
             if c.entity_num > 255:
                 flags |= messages.UpdateFlags.MOREBITS|messages.UpdateFlags.LONGENTITY
+            last_origin = None
+            if (static_collectables[c.entity_num].origins[i-1] !=
+                static_collectables[c.entity_num].origins[0]):
+                last_origin = static_collectables[c.entity_num].origins[i-1]
+                flags |= (messages.UpdateFlags.ORIGIN1|
+                          messages.UpdateFlags.ORIGIN2|
+                          messages.UpdateFlags.ORIGIN3)
             message = messages.EntityUpdateMessage(
-                flags, c.entity_num, None, None, None, None, None, None, None,
-                None, None, None, None, None, None)
+                flags, c.entity_num, None, None, None, None, None, last_origin,
+                None, None, None, None, None, None, None)
             for j in range(i, len(demo.blocks)):
                 if any([isinstance(m, messages.TimeMessage) for m in demo.blocks[j].messages]):
                     demo.blocks[j].messages.append(message)
