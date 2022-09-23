@@ -754,6 +754,7 @@ def fix_collection_events(actual_collections, demo):
 
     static_collectables = get_static_collectables(demo, models_precache)
 
+    times = demo.get_time()
     blocks_to_remove = []
     for i, block in enumerate(demo.blocks):
         equal = []
@@ -765,7 +766,7 @@ def fix_collection_events(actual_collections, demo):
         collections_to_add = [c for c in actual_collections[i] if c.entity_num not in equal]
 
         for c in collections_to_remove:
-            print("removed:", c.type)
+            print(f"removed collection: {c.type} at time {times[i]}")
 
             sounds_to_remove = [m for m in block.messages
                                 if (isinstance(m, messages.SoundMessage) and
@@ -797,7 +798,7 @@ def fix_collection_events(actual_collections, demo):
                     demo.blocks[j].messages.append(message)
 
         for c in collections_to_add:
-            print("added:", c.type)
+            print(f"added collection: {c.type} at time {times[i]}")
 
             sound_name = c.type.collect_sound.value
             sound_num = sounds_precache.index(sound_name)
