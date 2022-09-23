@@ -71,7 +71,7 @@ def get_damage_reduction(items: ItemFlags) -> float:
         damage_reduction = 0.8
     return damage_reduction
 
-class CollectableItemHealth15:
+class CollectableHealth15:
     gives = [Health(15)]
     collect_sound = CollectSound.HP15
     mins, maxs = [0.0, 0.0, 0.0], [32.0, 32.0, 56.0]
@@ -81,7 +81,7 @@ class CollectableItemHealth15:
     def will_collect(stats, is_coop):
         return stats.health < MAX_HEALTH
 
-class CollectableItemHealth25:
+class CollectableHealth25:
     gives = [Health(25)]
     collect_sound = CollectSound.HP25
     mins, maxs = [0.0, 0.0, 0.0], [32.0, 32.0, 56.0]
@@ -91,7 +91,7 @@ class CollectableItemHealth25:
     def will_collect(stats, is_coop):
         return stats.health < MAX_HEALTH
 
-class CollectableItemHealth100:
+class CollectableHealth100:
     gives = [Item(ItemFlags.SUPERHEALTH), Health(100)]
     collect_sound = CollectSound.HP100
     mins, maxs = [0.0, 0.0, 0.0], [32.0, 32.0, 56.0]
@@ -101,7 +101,7 @@ class CollectableItemHealth100:
     def will_collect(stats, is_coop):
         return True
 
-class CollectableItemShells20:
+class CollectableShells20:
     gives = [Shells(20)]
     collect_sound = CollectSound.AMMO
     mins, maxs = [0.0, 0.0, 0.0], [32.0, 32.0, 56.0]
@@ -111,7 +111,7 @@ class CollectableItemShells20:
     def will_collect(stats, is_coop):
         return stats.shells < MAX_SHELLS
 
-class CollectableItemShells40:
+class CollectableShells40:
     gives = [Shells(40)]
     collect_sound = CollectSound.AMMO
     mins, maxs = [0.0, 0.0, 0.0], [32.0, 32.0, 56.0]
@@ -121,7 +121,7 @@ class CollectableItemShells40:
     def will_collect(stats, is_coop):
         return stats.shells < MAX_SHELLS
 
-class CollectableItemNails25:
+class CollectableNails25:
     gives = [Nails(25)]
     collect_sound = CollectSound.AMMO
     mins, maxs = [0.0, 0.0, 0.0], [32.0, 32.0, 56.0]
@@ -131,7 +131,7 @@ class CollectableItemNails25:
     def will_collect(stats, is_coop):
         return stats.nails < MAX_NAILS
 
-class CollectableItemNails50:
+class CollectableNails50:
     gives = [Nails(50)]
     collect_sound = CollectSound.AMMO
     mins, maxs = [0.0, 0.0, 0.0], [32.0, 32.0, 56.0]
@@ -141,7 +141,7 @@ class CollectableItemNails50:
     def will_collect(stats, is_coop):
         return stats.nails < MAX_NAILS
 
-class CollectableItemRockets5:
+class CollectableRockets5:
     gives = [Rockets(5)]
     collect_sound = CollectSound.AMMO
     mins, maxs = [0.0, 0.0, 0.0], [32.0, 32.0, 56.0]
@@ -151,7 +151,7 @@ class CollectableItemRockets5:
     def will_collect(stats, is_coop):
         return stats.rockets < MAX_ROCKETS
 
-class CollectableItemRockets10:
+class CollectableRockets10:
     gives = [Rockets(10)]
     collect_sound = CollectSound.AMMO
     mins, maxs = [0.0, 0.0, 0.0], [32.0, 32.0, 56.0]
@@ -161,7 +161,7 @@ class CollectableItemRockets10:
     def will_collect(stats, is_coop):
         return stats.rockets < MAX_ROCKETS
 
-class CollectableItemCells6:
+class CollectableCells6:
     gives = [Cells(6)]
     collect_sound = CollectSound.AMMO
     mins, maxs = [0.0, 0.0, 0.0], [32.0, 32.0, 56.0]
@@ -171,7 +171,7 @@ class CollectableItemCells6:
     def will_collect(stats, is_coop):
         return stats.cells < MAX_CELLS
 
-class CollectableItemCells12:
+class CollectableCells12:
     gives = [Cells(12)]
     collect_sound = CollectSound.AMMO
     mins, maxs = [0.0, 0.0, 0.0], [32.0, 32.0, 56.0]
@@ -181,7 +181,7 @@ class CollectableItemCells12:
     def will_collect(stats, is_coop):
         return stats.cells < MAX_CELLS
 
-class CollectableItemGreenArmor:
+class CollectableGreenArmor:
     armor_value = 100
     gives = [Item(ItemFlags.ARMOR1), Armor(armor_value)]
     collect_sound = CollectSound.ARMOR
@@ -193,7 +193,7 @@ class CollectableItemGreenArmor:
         return (get_damage_reduction(ItemFlags.ARMOR1) * cls.armor_value >=
                 get_damage_reduction(stats.items) * stats.armor)
 
-class CollectableItemYellowArmor:
+class CollectableYellowArmor:
     armor_value = 150
     gives = [Item(ItemFlags.ARMOR2), Armor(armor_value)]
     collect_sound = CollectSound.ARMOR
@@ -205,7 +205,7 @@ class CollectableItemYellowArmor:
         return (get_damage_reduction(ItemFlags.ARMOR2) * cls.armor_value >=
                 get_damage_reduction(stats.items) * stats.armor)
 
-class CollectableItemRedArmor:
+class CollectableRedArmor:
     armor_value = 200
     gives = [Item(ItemFlags.ARMOR3), Armor(armor_value)]
     collect_sound = CollectSound.ARMOR
@@ -217,7 +217,7 @@ class CollectableItemRedArmor:
         return (get_damage_reduction(ItemFlags.ARMOR3) * cls.armor_value >=
                 get_damage_reduction(stats.items) * stats.armor)
 
-class CollectableItemSuperShotgun:
+class CollectableSuperShotgun:
     gives = [Item(ItemFlags.SUPER_SHOTGUN), Shells(5)]
     collect_sound = CollectSound.WEAPON
     print_text = b"You got the Double-barrelled Shotgun\n"
@@ -227,7 +227,7 @@ class CollectableItemSuperShotgun:
     def will_collect(stats, is_coop):
         return not is_coop or not (stats.items & ItemFlags.SUPER_SHOTGUN)
 
-class CollectableItemNailgun:
+class CollectableNailgun:
     gives = [Item(ItemFlags.NAILGUN), Nails(30)]
     collect_sound = CollectSound.WEAPON
     mins, maxs = [-16.0, -16.0, 0.0], [16.0, 16.0, 56.0]
@@ -237,7 +237,7 @@ class CollectableItemNailgun:
     def will_collect(stats, is_coop):
         return not is_coop or not (stats.items & ItemFlags.NAILGUN)
 
-class CollectableItemSuperNailgun:
+class CollectableSuperNailgun:
     gives = [Item(ItemFlags.SUPER_NAILGUN), Nails(30)]
     collect_sound = CollectSound.WEAPON
     mins, maxs = [-16.0, -16.0, 0.0], [16.0, 16.0, 56.0]
@@ -247,7 +247,7 @@ class CollectableItemSuperNailgun:
     def will_collect(stats, is_coop):
         return not is_coop or not (stats.items & ItemFlags.SUPER_NAILGUN)
 
-class CollectableItemGrenadeLauncher:
+class CollectableGrenadeLauncher:
     gives = [Item(ItemFlags.GRENADE_LAUNCHER), Rockets(5)]
     collect_sound = CollectSound.WEAPON
     mins, maxs = [-16.0, -16.0, 0.0], [16.0, 16.0, 56.0]
@@ -257,7 +257,7 @@ class CollectableItemGrenadeLauncher:
     def will_collect(stats, is_coop):
         return not is_coop or not (stats.items & ItemFlags.GRENADE_LAUNCHER)
 
-class CollectableItemRocketLauncher:
+class CollectableRocketLauncher:
     gives = [Item(ItemFlags.ROCKET_LAUNCHER), Rockets(5)]
     collect_sound = CollectSound.WEAPON
     mins, maxs = [-16.0, -16.0, 0.0], [16.0, 16.0, 56.0]
@@ -267,7 +267,7 @@ class CollectableItemRocketLauncher:
     def will_collect(stats, is_coop):
         return not is_coop or not (stats.items & ItemFlags.ROCKET_LAUNCHER)
 
-class CollectableItemLightningGun:
+class CollectableLightningGun:
     gives = [Item(ItemFlags.LIGHTNING), Cells(15)]
     collect_sound = CollectSound.WEAPON
     mins, maxs = [-16.0, -16.0, 0.0], [16.0, 16.0, 56.0]
@@ -278,7 +278,7 @@ class CollectableItemLightningGun:
         return not is_coop or not (stats.items & ItemFlags.LIGHTNING)
 
 @dataclasses.dataclass
-class CollectableItemBackpack:
+class CollectableBackpack:
     gives = [Shells(math.inf), Nails(math.inf), Rockets(math.inf), Cells(math.inf)]
     collect_sound = CollectSound.AMMO
     mins, maxs = [-16.0, -16.0, 0.0], [16.0, 16.0, 56.0]
@@ -288,50 +288,51 @@ class CollectableItemBackpack:
         return True
 
 
-def get_pickup_health(item_type):
-    return sum([x.value for x in item_type.gives if isinstance(x, Health)])
 
-def get_pickup_shells(item_type):
-    return sum([x.value for x in item_type.gives if isinstance(x, Shells)])
+def get_pickup_health(collectable):
+    return sum([x.value for x in collectable.gives if isinstance(x, Health)])
 
-def get_pickup_nails(item_type):
-    return sum([x.value for x in item_type.gives if isinstance(x, Nails)])
+def get_pickup_shells(collectable):
+    return sum([x.value for x in collectable.gives if isinstance(x, Shells)])
 
-def get_pickup_rockets(item_type):
-    return sum([x.value for x in item_type.gives if isinstance(x, Rockets)])
+def get_pickup_nails(collectable):
+    return sum([x.value for x in collectable.gives if isinstance(x, Nails)])
 
-def get_pickup_cells(item_type):
-    return sum([x.value for x in item_type.gives if isinstance(x, Cells)])
+def get_pickup_rockets(collectable):
+    return sum([x.value for x in collectable.gives if isinstance(x, Rockets)])
 
-def get_pickup_armor(item_type):
-    return sum([x.value for x in item_type.gives if isinstance(x, Armor)])
+def get_pickup_cells(collectable):
+    return sum([x.value for x in collectable.gives if isinstance(x, Cells)])
 
-def get_pickup_items(item_type):
+def get_pickup_armor(collectable):
+    return sum([x.value for x in collectable.gives if isinstance(x, Armor)])
+
+def get_pickup_items(collectable):
     item_flags = 0
-    for flags in [x.value for x in item_type.gives if isinstance(x, Item)]:
+    for flags in [x.value for x in collectable.gives if isinstance(x, Item)]:
         item_flags |= flags
     return item_flags
 
 
 COLLECTABLE_MODELS_MAP = {
-    b'maps/b_bh10.bsp': CollectableItemHealth15,
-    b'maps/b_bh25.bsp': CollectableItemHealth25,
-    b'maps/b_bh100.bsp': CollectableItemHealth100,
-    b'maps/b_shell0.bsp': CollectableItemShells20,
-    b'maps/b_shell1.bsp': CollectableItemShells40,
-    b'maps/b_nail0.bsp': CollectableItemNails25,
-    b'maps/b_nail1.bsp': CollectableItemNails50,
-    b'maps/b_rock0.bsp': CollectableItemRockets5,
-    b'maps/b_rock1.bsp': CollectableItemRockets10,
-    b'maps/b_batt0.bsp': CollectableItemCells6,
-    b'maps/b_batt1.bsp': CollectableItemCells12,
+    b'maps/b_bh10.bsp': CollectableHealth15,
+    b'maps/b_bh25.bsp': CollectableHealth25,
+    b'maps/b_bh100.bsp': CollectableHealth100,
+    b'maps/b_shell0.bsp': CollectableShells20,
+    b'maps/b_shell1.bsp': CollectableShells40,
+    b'maps/b_nail0.bsp': CollectableNails25,
+    b'maps/b_nail1.bsp': CollectableNails50,
+    b'maps/b_rock0.bsp': CollectableRockets5,
+    b'maps/b_rock1.bsp': CollectableRockets10,
+    b'maps/b_batt0.bsp': CollectableCells6,
+    b'maps/b_batt1.bsp': CollectableCells12,
     b'progs/armor.mdl': None,  # depends on skin, so has to be handled in special way
-    b'progs/g_shot.mdl': CollectableItemSuperShotgun,
-    b'progs/g_nail.mdl': CollectableItemNailgun,
-    b'progs/g_nail2.mdl': CollectableItemSuperNailgun,
-    b'progs/g_rock.mdl': CollectableItemGrenadeLauncher,
-    b'progs/g_rock2.mdl': CollectableItemRocketLauncher,
-    b'progs/g_light.mdl': CollectableItemLightningGun,
+    b'progs/g_shot.mdl': CollectableSuperShotgun,
+    b'progs/g_nail.mdl': CollectableNailgun,
+    b'progs/g_nail2.mdl': CollectableSuperNailgun,
+    b'progs/g_rock.mdl': CollectableGrenadeLauncher,
+    b'progs/g_rock2.mdl': CollectableRocketLauncher,
+    b'progs/g_light.mdl': CollectableLightningGun,
 }
 
 @dataclasses.dataclass
@@ -342,9 +343,8 @@ class SoundCollectEvent:
     sound: CollectSound
 
 @dataclasses.dataclass
-class CollectableItem:
+class Collectable:
     entity_num: int
-    origin: list[float]
     type: None
     sound_event: SoundCollectEvent
     frame_collected: int
@@ -367,8 +367,24 @@ class CollectableItem:
     def get_pickup_items(self):
         return get_pickup_items(self.type)
 
+    def bounds(self, origin):
+        return collision.bounds_collectable(origin, self.type.mins, self.type.maxs)
+
+@dataclasses.dataclass
+class CollectablePersistant:
+    collectable: Collectable
+    origins: list[list[float]]
+
     def bounds(self, frame: int):
-        return collision.bounds_item(self.origin[frame], self.type.mins, self.type.maxs)
+        return self.collectable.bounds(self.origins[frame])
+
+@dataclasses.dataclass
+class CollectableActiveFrame:
+    collectable: Collectable
+    origin: list[float]
+
+    def bounds(self):
+        return self.collectable.bounds(self.origin)
 
 
 def get_precaches(demo):
@@ -378,36 +394,75 @@ def get_precaches(demo):
     return (server_info_message[0].models_precache,
             server_info_message[0].sounds_precache)
 
-def get_collectable_items(demo, models_precache):
-    static_collectable_items = dict()
+def get_static_collectables(demo, models_precache):
+    collectables_static = dict()
     for i, block in enumerate(demo.blocks):
         for m in block.messages:
             if isinstance(m, messages.SpawnBaselineMessage):
                 model_name = models_precache[m.modelindex]
                 if model_name in COLLECTABLE_MODELS_MAP.keys():
-                    assert m.entity_num not in static_collectable_items
+                    assert m.entity_num not in collectables_static
                     if model_name == b'progs/armor.mdl':
                         if m.skin == 0:
-                            item_type = CollectableItemGreenArmor
+                            collectable_type = CollectableGreenArmor
                         elif m.skin == 1:
-                            item_type = CollectableItemYellowArmor
+                            collectable_type = CollectableYellowArmor
                         else:
                             assert m.skin == 2
-                            item_type = CollectableItemRedArmor
+                            collectable_type = CollectableRedArmor
                     else:
-                        item_type = COLLECTABLE_MODELS_MAP[model_name]
-                    static_collectable_items[m.entity_num] = CollectableItem(
-                        m.entity_num, [list(m.origin) for _ in range(len(demo.blocks))], item_type, None, math.inf)
+                        collectable_type = COLLECTABLE_MODELS_MAP[model_name]
+                    collectables_static[m.entity_num] = CollectablePersistant(
+                        Collectable(m.entity_num, collectable_type, None, math.inf),
+                        [list(m.origin) for _ in range(len(demo.blocks))])
             elif isinstance(m, messages.EntityUpdateMessage):
-                if m.num in static_collectable_items:
+                if m.num in collectables_static:
                     if m.flags & messages.UpdateFlags.ORIGIN1:
-                        static_collectable_items[m.num].origin[i][0] = m.origin[0]
+                        collectables_static[m.num].origins[i][0] = m.origin[0]
                     if m.flags & messages.UpdateFlags.ORIGIN2:
-                        static_collectable_items[m.num].origin[i][1] = m.origin[1]
+                        collectables_static[m.num].origins[i][1] = m.origin[1]
                     if m.flags & messages.UpdateFlags.ORIGIN3:
-                        static_collectable_items[m.num].origin[i][2] = m.origin[2]
+                        collectables_static[m.num].origins[i][2] = m.origin[2]
+    return collectables_static
 
-    return static_collectable_items
+def get_static_collectables_by_frame(demo, models_precache):
+    statics = get_static_collectables(demo, models_precache)
+    collectables_by_frame = [[] for _ in range(len(demo.blocks))]
+    for i, block in enumerate(demo.blocks):
+        has_entity_update = False
+        for m in block.messages:
+            if isinstance(m, messages.SpawnBaselineMessage):
+                # this is so that we can collect items instantly on unpause,
+                # because there is not a single EntityUpdateMessage for those
+                if m.entity_num in statics:
+                    assert i == 1
+                    collectables_by_frame[i].append(CollectableActiveFrame(
+                        statics[m.entity_num].collectable,
+                        statics[m.entity_num].origins[i]))
+            elif isinstance(m, messages.EntityUpdateMessage):
+                if m.num in statics:
+                    has_entity_update = True
+                    collectables_by_frame[i].append(CollectableActiveFrame(
+                        statics[m.num].collectable, statics[m.num].origins[i]))
+        if not any((isinstance(m, messages.TimeMessage) or
+                    isinstance(m, messages.SpawnBaselineMessage))
+                   for m in block.messages):
+            assert not has_entity_update
+            # this is so that intermediate frames that do not have a TimeMessage
+            # still provide the info as if accessing the proper frame
+            collectables_by_frame[i] = collectables_by_frame[i-1]
+    return collectables_by_frame
+
+def get_backpacks_by_frame(demo, models_precache):
+    backpacks_by_frame = [[] for _ in range(len(demo.blocks))]
+    for i, block in enumerate(demo.blocks):
+        for m in block.messages:
+            if isinstance(m, messages.EntityUpdateMessage):
+                if m.modelindex and models_precache[m.modelindex] == b'progs/backpack.mdl':
+                    backpacks_by_frame[i].append(CollectableActiveFrame(
+                        Collectable(m.num, CollectableBackpack, None, math.inf),
+                        m.origin))
+    return backpacks_by_frame
 
 def get_viewent_num(demo):
     set_view_messages = [m for b in demo.blocks for m in b.messages
@@ -439,107 +494,91 @@ def is_sound_from_client_position(client_origin, sound_origin) -> bool:
     # an entity update and when the sound is created.
     return max_diff < 1.5
 
-def find_closest_item_to_client(client_origin, items, block_index):
+def find_closest_collectable_to_client(client_origin, collectable_active_frames):
     closest_distance = math.inf
-    closest_item = None
-    for item in items:
+    closest_collectable = None
+    for collectable_frame in collectable_active_frames:
         distance = collision.distance(collision.bounds_player(client_origin),
-                                      item.bounds(frame=block_index))
+                                      collectable_frame.bounds())
         if distance < closest_distance:
-            closest_item = item
+            closest_collectable = collectable_frame.collectable
             closest_distance = distance
-    return closest_item, closest_distance
+    return closest_collectable, closest_distance
 
-def get_changeable_collections(demo):
+def get_collections(demo):
     models_precache, sounds_precache = get_precaches(demo)
-    static_collectable_items = get_collectable_items(demo, models_precache)
-    items_by_frame = [[] for _ in range(len(demo.blocks))]
     sound_pickup_events = []
     viewent_num = get_viewent_num(demo)
     for i, block in enumerate(demo.blocks):
         for m in block.messages:
-            if isinstance(m, messages.EntityUpdateMessage):
-                if m.num in static_collectable_items:
-                    items_by_frame[i].append(static_collectable_items[m.num])
-            elif isinstance(m, messages.SoundMessage):
+            if isinstance(m, messages.SoundMessage):
                 sound_name = sounds_precache[m.sound_num]
                 if m.ent == viewent_num and sound_name in COLLECT_SOUNDS:
                     sound_pickup_events.append(SoundCollectEvent(
                         i, m.sound_num, m.pos, CollectSound(sound_name)))
 
+    statics_by_frame = get_static_collectables_by_frame(demo, models_precache)
+    backpacks_by_frame = get_backpacks_by_frame(demo, models_precache)
     client_positions = get_client_positions(demo, viewent_num)
 
-    changeable_collections = [[] for _ in range(len(demo.blocks))]
-    for event in sound_pickup_events:
-        client_origin = client_positions[event.block_index]
-        assert is_sound_from_client_position(client_origin=client_origin,
-                                             sound_origin=event.origin)
-
-        distance = math.inf
-        closest_item, distance = find_closest_item_to_client(client_origin,
-            [item for item in items_by_frame[event.block_index-1]
-             if item.type.collect_sound == event.sound], event.block_index)
-        if distance >= 0.5:
-            # this was needed for e1m5_009. host spawns directly in healthpack
-            # which seems to be picked up instantly, so it is not even shown by
-            # one frame
-            closest_item, distance = find_closest_item_to_client(client_origin,
-                [item for item in static_collectable_items.values()
-                 if item.type.collect_sound == event.sound], event.block_index-1)
-        if distance < 0.5:
-            assert event.sound == closest_item.type.collect_sound
-            closest_item.sound_event = event
-            # TODO allow multiple items per sound event
-            changeable_collections[event.block_index].append(closest_item)
-    return changeable_collections
-
-
-def get_backpack_collections(demo):
-    models_precache, sounds_precache = get_precaches(demo)
-    backpacks_by_frame = [[] for _ in range(len(demo.blocks))]
-    sound_pickup_events = []
-    viewent_num = get_viewent_num(demo)
-    for i, block in enumerate(demo.blocks):
-        for m in block.messages:
-            if isinstance(m, messages.EntityUpdateMessage):
-                if m.modelindex and models_precache[m.modelindex] == b'progs/backpack.mdl':
-                    backpacks_by_frame[i].append(CollectableItem(
-                        m.num, m.origin, CollectableItemBackpack, None, math.inf))
-            elif isinstance(m, messages.SoundMessage):
-                if m.ent == viewent_num and sounds_precache[m.sound_num] ==  b'weapons/lock4.wav':
-                    sound_pickup_events.append(SoundCollectEvent(
-                        i, m.sound_num, m.pos, CollectableItemBackpack.collect_sound))
-            # TODO: get backpack content from printed messages on next block
-
-    client_positions = get_client_positions(demo, viewent_num)
-
+    static_collections = [[] for _ in range(len(demo.blocks))]
     backpack_collections = [[] for _ in range(len(demo.blocks))]
     for event in sound_pickup_events:
         client_origin = client_positions[event.block_index]
         assert is_sound_from_client_position(client_origin=client_origin,
                                              sound_origin=event.origin)
 
-        for backpack in backpacks_by_frame[event.block_index-1]:
-            if collision.distance(collision.bounds_player(client_origin),
-                                  collision.bounds_item(backpack.origin, backpack.type.mins, backpack.type.maxs)) < 0.5:
-                backpack_collections[event.block_index].append(backpack)
+        statics_candidates = [static for static in statics_by_frame[event.block_index-1]
+                              if static.collectable.type.collect_sound == event.sound]
+        closest_static, distance_static = find_closest_collectable_to_client(
+            client_origin, statics_candidates)
+
+        closest_backpack = None
+        distance_backpack = math.inf
+        if event.sound == CollectSound.AMMO:
+            closest_backpack, distance_backpack = find_closest_collectable_to_client(
+                client_origin, backpacks_by_frame[event.block_index-1])
+
+        if distance_static < distance_backpack:
+            distance = distance_static
+            closest = closest_static
+            static_collections[event.block_index].append(closest_static)
+        else:
+            distance = distance_backpack
+            closest = closest_backpack
+            backpack_collections[event.block_index].append(closest_backpack)
+        # TODO: allow multiple collectables per sound event
+        # probably just have to remove closest from the statics_by_frame or
+        # backpacks_by_frame lists?
+        assert distance < 0.5
+        assert event.sound == closest.type.collect_sound
+        closest.sound_event = event
+
+    return static_collections, backpack_collections
+
+def get_static_collections(demo):
+    static_collections, _ = get_collections(demo)
+    return static_collections
+
+def get_backpack_collections(demo):
+    _, backpack_collections = get_collections(demo)
     return backpack_collections
 
 def get_possible_collections(demo):
     models_precache, _ = get_precaches(demo)
-    static_collectable_items = get_collectable_items(demo, models_precache)
+    collectables = get_static_collectables(demo, models_precache)
     client_positions = get_client_positions(demo, get_viewent_num(demo))
 
     possible_pickups = [[] for _ in range(len(demo.blocks))]
     for i, pos in enumerate(client_positions):
-        for item in static_collectable_items.values():
+        for collectable in collectables.values():
             tolerance = 0.0
             if i == 3:
                 tolerance = 0.5  # for the instant pickup on e1m5_009
             # somehow need frame=i-2 for e1m3_023?
             if collision.distance(collision.bounds_player(pos),
-                                  item.bounds(frame=i-2)) < tolerance:
-                possible_pickups[i].append(item)
+                                  collectable.bounds(frame=i-2)) <= tolerance:
+                possible_pickups[i].append(collectable.collectable)
     return possible_pickups
 
 def get_damage(demo):
@@ -628,14 +667,14 @@ def rebuild_stats(new_start: format.ClientStats,
         assert stats.rockets >= MIN_ROCKETS
         assert stats.cells >= MIN_CELLS
 
-        for item in possible_collections[i]:
-            if item.will_collect(stats, is_coop) and item.frame_collected > i:
-                collected_health = item.get_pickup_health()
-                collected_shells = item.get_pickup_shells()
-                collected_nails = item.get_pickup_nails()
-                collected_rockets = item.get_pickup_rockets()
-                collected_cells = item.get_pickup_cells()
-                collected_armor = item.get_pickup_armor()
+        for collectable in possible_collections[i]:
+            if collectable.will_collect(stats, is_coop) and collectable.frame_collected > i:
+                collected_health = collectable.get_pickup_health()
+                collected_shells = collectable.get_pickup_shells()
+                collected_nails = collectable.get_pickup_nails()
+                collected_rockets = collectable.get_pickup_rockets()
+                collected_cells = collectable.get_pickup_cells()
+                collected_armor = collectable.get_pickup_armor()
                 # TODO should really check if this specific item was picked up on this frame in the
                 # original instead.
                 picked_something_up_in_original = (
@@ -645,17 +684,17 @@ def rebuild_stats(new_start: format.ClientStats,
                     (collected_rockets > 0 and old_stats.rockets > old_stats_previous.rockets) or
                     (collected_cells > 0 and old_stats.cells > old_stats_previous.cells) or
                     (collected_armor > 0 and old_stats.armor > old_stats_previous.armor))
-                if item.will_collect(old_stats_previous, is_coop) and not picked_something_up_in_original:
-                    # for some reason this item wasnt picked up in original demo
+                if collectable.will_collect(old_stats_previous, is_coop) and not picked_something_up_in_original:
+                    # for some reason this collectable wasnt picked up in original demo
                     # despite stats indicating that it will be picked up. perhaps
-                    # another coop player already got that item or something weird
+                    # another coop player already got that collectable or something weird
                     # is going on like with the nailgun in the trap on e1m3
                     continue
 
-                actual_collections[i].append(item)
-                item.frame_collected = i
+                actual_collections[i].append(collectable)
+                collectable.frame_collected = i
 
-                stats.items |= item.get_pickup_items()
+                stats.items |= collectable.get_pickup_items()
                 if stats.items & ItemFlags.SUPERHEALTH:
                     stats.health = min(250, stats.health + collected_health)
                 else:
@@ -709,7 +748,7 @@ def rebuild_stats(new_start: format.ClientStats,
 
 def fix_collection_events(actual_collections, demo):
     _, sounds_precache = get_precaches(demo)
-    changeable_collections = get_changeable_collections(demo)
+    changeable_collections = get_static_collections(demo)
     viewent_num = get_viewent_num(demo)
     client_positions = get_client_positions(demo, viewent_num)
 
@@ -736,7 +775,7 @@ def fix_collection_events(actual_collections, demo):
             # pickup message, screenflash and so on
             blocks_to_remove.append(i + 1)
 
-            # TODO: can we somehow figure out if the item is in view to not spam
+            # TODO: can we somehow figure out if the collectable is in view to not spam
             # these messages in every block?
             flags = messages.UpdateFlags.SIGNAL
             if c.entity_num > 255:

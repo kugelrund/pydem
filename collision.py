@@ -1,4 +1,4 @@
-def extend_bounds_item(absmin: list[float], absmax: list[float]):
+def extend_bounds_collectable(absmin: list[float], absmax: list[float]):
     # following SV_LinkEdict
     return ([absmin[0] - 15.0, absmin[1] - 15.0, absmin[2]],
             [absmax[0] + 15.0, absmax[1] + 15.0, absmax[2]])
@@ -12,9 +12,9 @@ def bounds(pos: list[float], mins: list[float], maxs: list[float]):
     absmax = [x + x_maxs for x, x_maxs in zip(pos, maxs)]
     return absmin, absmax
 
-def bounds_item(pos: list[float], mins: list[float], maxs: list[float]):
+def bounds_collectable(pos: list[float], mins: list[float], maxs: list[float]):
     absmin, absmax = bounds(pos, mins, maxs)
-    return extend_bounds_item(absmin, absmax)
+    return extend_bounds_collectable(absmin, absmax)
 
 def interval_distance(interval1, interval2):
     a1, b1 = interval1
