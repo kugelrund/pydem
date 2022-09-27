@@ -616,7 +616,8 @@ def get_ammo_for_activeweapon(stats: format.ClientStats):
 
 def rebuild_stats(new_start: format.ClientStats,
                   old_stats_list: list[format.ClientStats],
-                  backpack_collections, possible_collections, damage, is_coop):
+                  backpack_collections, old_static_collections,
+                  possible_collections, damage, is_coop):
     assert len(old_stats_list) == len(damage)
 
     old_stats_previous = None
@@ -629,8 +630,7 @@ def rebuild_stats(new_start: format.ClientStats,
             stats_list.append(None)
             continue
         if not old_stats_previous:
-            old_stats_previous = copy.deepcopy(old_stats)
-            old_stats_previous.health = 0  # so that instant pickup on e1m5_009 works
+            old_stats_previous = old_stats
 
         if old_stats.armor == 0:
             orig_damage = damage[i].blood + damage[i].armor
@@ -669,22 +669,8 @@ def rebuild_stats(new_start: format.ClientStats,
 
         for collectable in possible_collections[i]:
             if collectable.will_collect(stats, is_coop) and collectable.frame_collected > i:
-                collected_health = collectable.get_pickup_health()
-                collected_shells = collectable.get_pickup_shells()
-                collected_nails = collectable.get_pickup_nails()
-                collected_rockets = collectable.get_pickup_rockets()
-                collected_cells = collectable.get_pickup_cells()
-                collected_armor = collectable.get_pickup_armor()
-                # TODO should really check if this specific item was picked up on this frame in the
-                # original instead.
-                picked_something_up_in_original = (
-                    (collected_health > 0 and old_stats.health > old_stats_previous.health) or
-                    (collected_shells > 0 and old_stats.shells > old_stats_previous.shells) or
-                    (collected_nails > 0 and old_stats.nails > old_stats_previous.nails) or
-                    (collected_rockets > 0 and old_stats.rockets > old_stats_previous.rockets) or
-                    (collected_cells > 0 and old_stats.cells > old_stats_previous.cells) or
-                    (collected_armor > 0 and old_stats.armor > old_stats_previous.armor))
-                if collectable.will_collect(old_stats_previous, is_coop) and not picked_something_up_in_original:
+                picked_up_in_original = any(c.entity_num == collectable.entity_num for c in old_static_collections[i])
+                if collectable.will_collect(old_stats_previous, is_coop) and not picked_up_in_original:
                     # for some reason this collectable wasnt picked up in original demo
                     # despite stats indicating that it will be picked up. perhaps
                     # another coop player already got that collectable or something weird
@@ -695,6 +681,12 @@ def rebuild_stats(new_start: format.ClientStats,
                 collectable.frame_collected = i
 
                 stats.items |= collectable.get_pickup_items()
+                collected_health = collectable.get_pickup_health()
+                collected_shells = collectable.get_pickup_shells()
+                collected_nails = collectable.get_pickup_nails()
+                collected_rockets = collectable.get_pickup_rockets()
+                collected_cells = collectable.get_pickup_cells()
+                collected_armor = collectable.get_pickup_armor()
                 if stats.items & ItemFlags.SUPERHEALTH:
                     stats.health = min(250, stats.health + collected_health)
                 else:

@@ -122,6 +122,7 @@ def main():
         new_client_stats_list, actual_collections = stats.rebuild_stats(
             next_client_stats, client_stats_list,
             stats.get_backpack_collections(demo_next),
+            stats.get_static_collections(demo_next),
             stats.get_possible_collections(demo_next),
             stats.get_damage(demo_next), is_coop)
         #for a, b in zip(client_stats_list, new_client_stats_list):
