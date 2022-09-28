@@ -2,6 +2,8 @@ import copy
 import dataclasses
 import enum
 import math
+import re
+import typing
 
 import collision
 import format
@@ -318,7 +320,7 @@ class CollectableLightningGun:
 
 @dataclasses.dataclass
 class CollectableBackpack:
-    gives = [Shells(math.inf), Nails(math.inf), Rockets(math.inf), Cells(math.inf)]
+    gives = []
     collect_sound = CollectSound.AMMO
     mins, maxs = [-16.0, -16.0, 0.0], [16.0, 16.0, 56.0]
 
@@ -350,16 +352,21 @@ COLLECTABLE_MODELS_MAP = {
 
 @dataclasses.dataclass
 class SoundCollectEvent:
-    block_index: int
     sound_num: int
     origin: list[float]
     sound: CollectSound
 
 @dataclasses.dataclass
+class CollectEvent:
+    block_index: int
+    sound_event: SoundCollectEvent
+    text: bytes
+
+@dataclasses.dataclass
 class Collectable:
     entity_num: int
     type: None
-    sound_event: SoundCollectEvent
+    collect_event: CollectEvent
     frame_collected: int
 
     def will_collect(self, stats, is_coop):
@@ -478,6 +485,44 @@ def get_viewent_num(demo):
     assert all([m.viewentity_id == viewent_num for m in set_view_messages])
     return viewent_num
 
+def get_collection_sounds(block: format.Block, sounds_precache: list[str], viewent_num: int) -> typing.Iterator[SoundCollectEvent]:
+    for m in block.messages:
+        if isinstance(m, messages.SoundMessage):
+            sound_name = sounds_precache[m.sound_num]
+            if m.ent == viewent_num and sound_name in COLLECT_SOUNDS:
+                yield SoundCollectEvent(
+                    m.sound_num, m.pos, CollectSound(sound_name))
+
+def get_collection_prints(block: format.Block) -> typing.Iterator[bytes]:
+    ignore_items = [b"silver key", b"gold key", b"silver keycard",
+                    b"gold keycard", b"silver runekey", b"gold runekey",
+                    b"Quad Damage", b"Biosuit", b"Ring of Shadows",
+                    b"Pentagram of Protection"]
+    ignore_texts = [b"You got the " + x + b"\n" for x in ignore_items]
+    text = b""
+    for m in block.messages:
+        if isinstance(m, messages.PrintMessage):
+            if (m.text.startswith(b"You get") or
+                m.text.startswith(b"You got") or
+                m.text.startswith(b"You receive")):
+                assert not text
+                text += m.text
+            elif text:
+                text += m.text
+        elif isinstance(m, messages.StuffTextMessage):
+            if m.text == b"bf\n":
+                if text and not any(x == text for x in ignore_texts):
+                    yield text
+                text = b""
+
+def get_collection_events(demo: format.Demo, sounds_precache: list[str]) -> typing.Iterator[CollectEvent]:
+    viewent_num = get_viewent_num(demo)
+    for i, block in enumerate(demo.blocks[:-1]):
+        sounds = get_collection_sounds(block, sounds_precache, viewent_num)
+        prints = get_collection_prints(demo.blocks[i+1])
+        for sound, print in zip(sounds, prints, strict=True):
+            yield CollectEvent(i, sound, print)
+
 def get_client_positions(demo, client_num):
     client_positions = []
     for block in demo.blocks:
@@ -512,53 +557,59 @@ def find_closest_collectable_frame_to_client(client_origin,
             closest_distance = distance
     return closest_collectable, closest_distance
 
+def get_backpack_contents(collection_text: bytes) -> typing.Iterator:
+    pattern = (b'You get '
+               b'(?:([1-9]\d*) shells)?(?:, )?'
+               b'(?:([1-9]\d*) nails)?(?:, )?'
+               b'(?:([1-9]\d*) rockets)?(?:, )?'
+               b'(?:([1-9]\d*) cells)?\\n')
+    match = re.match(pattern, collection_text)
+    for i, stat_type in enumerate((Shells, Nails, Rockets, Cells)):
+        if match.group(i+1):
+            yield stat_type(int(match.group(i+1)))
+
 def get_collections(demo):
     models_precache, sounds_precache = get_precaches(demo)
-    sound_pickup_events = []
     viewent_num = get_viewent_num(demo)
-    for i, block in enumerate(demo.blocks):
-        for m in block.messages:
-            if isinstance(m, messages.SoundMessage):
-                sound_name = sounds_precache[m.sound_num]
-                if m.ent == viewent_num and sound_name in COLLECT_SOUNDS:
-                    sound_pickup_events.append(SoundCollectEvent(
-                        i, m.sound_num, m.pos, CollectSound(sound_name)))
-
+    collection_events = get_collection_events(demo, sounds_precache)
     statics_by_frame = get_static_collectables_by_frame(demo, models_precache)
     backpacks_by_frame = get_backpacks_by_frame(demo, models_precache)
     client_positions = get_client_positions(demo, viewent_num)
 
     static_collections = [[] for _ in range(len(demo.blocks))]
     backpack_collections = [[] for _ in range(len(demo.blocks))]
-    for event in sound_pickup_events:
+    for event in collection_events:
         client_origin = client_positions[event.block_index]
         assert is_sound_from_client_position(client_origin=client_origin,
-                                             sound_origin=event.origin)
+                                             sound_origin=event.sound_event.origin)
 
         statics_candidates = [static for static in statics_by_frame[event.block_index-1]
-                              if static.collectable.type.collect_sound == event.sound]
+                              if static.collectable.type.collect_sound == event.sound_event.sound]
         closest_static, distance_static = find_closest_collectable_frame_to_client(
             client_origin, statics_candidates)
 
         closest_backpack = None
         distance_backpack = math.inf
-        if event.sound == CollectSound.AMMO:
+        if event.sound_event.sound == CollectSound.AMMO:
             closest_backpack, distance_backpack = find_closest_collectable_frame_to_client(
                 client_origin, backpacks_by_frame[event.block_index-1])
 
         if distance_static < distance_backpack:
+            assert event.text == closest_static.collectable.type.print_text
             statics_by_frame[event.block_index-1].remove(closest_static)
             distance = distance_static
             closest = closest_static.collectable
             static_collections[event.block_index].append(closest)
         else:
+            assert event.text.startswith(b'You get ')
             backpacks_by_frame[event.block_index-1].remove(closest_backpack)
             distance = distance_backpack
             closest = closest_backpack.collectable
+            closest.type.gives = list(get_backpack_contents(event.text))
             backpack_collections[event.block_index].append(closest)
         assert distance < 0.5
-        assert event.sound == closest.type.collect_sound
-        closest.sound_event = event
+        assert event.sound_event.sound == closest.type.collect_sound
+        closest.sound_event = event.sound_event
 
     return static_collections, backpack_collections
 
@@ -661,7 +712,12 @@ def rebuild_stats(new_start: format.ClientStats,
         assert stats.armor >= 0
 
         for stat_type in (Shells, Nails, Rockets, Cells):
-            lost = max(0, old_stats_previous[stat_type] - old_stats[stat_type])
+            collected = sum(c.get_pickup(stat_type) for c in
+                            (old_static_collections[i] + backpack_collections[i]))
+            old_value_before_loss = stat_type.bound(
+                old_stats_previous[stat_type] + collected, old_stats.items)
+            lost = old_value_before_loss - old_stats[stat_type]
+            assert lost >= 0
             stats[stat_type] -= lost
             assert stats[stat_type] >= stat_type.min
 
@@ -687,24 +743,16 @@ def rebuild_stats(new_start: format.ClientStats,
                 if collected_armor > 0:
                     stats.armor = collected_armor
 
+        for stat_type in (Shells, Nails, Rockets, Cells):
+            backpack_value = sum(c.get_pickup(stat_type)
+                                 for c in backpack_collections[i])
+            stats[stat_type] = stat_type.bound(
+                stats[stat_type] + backpack_value, stats.items)
+
         added_items = (old_stats.items & ~old_stats_previous.items)
         removed_items = (~old_stats.items & old_stats_previous.items)
         stats.items |= added_items
         stats.items &= ~removed_items
-
-        if backpack_collections[i]:
-            for stat_type in (Shells, Nails, Rockets, Cells):
-                # TODO assert no other collection of this stat_type, that would
-                # make things difficult
-                if old_stats[stat_type] > old_stats_previous[stat_type]:
-                    backpack_value = (old_stats[stat_type] -
-                                      old_stats_previous[stat_type])
-                    stats[stat_type] = stat_type.bound(
-                        stats[stat_type] + backpack_value, stats.items)
-            assert (old_stats.shells > old_stats_previous.shells or
-                    old_stats.nails > old_stats_previous.nails or
-                    old_stats.rockets > old_stats_previous.rockets or
-                    old_stats.cells > old_stats_previous.cells)
 
         stats.activeweapon = old_stats.activeweapon  # TODO: set to new_start first. then set to something else if 0 ammo is reached. Also fix which ammo is shown in hud with that
         ammo_item_flag, stats.ammo = get_ammo_for_activeweapon(stats)
