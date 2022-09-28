@@ -270,7 +270,7 @@ class CollectableNailgun:
     gives = [Item(ItemFlags.NAILGUN), Nails(30)]
     collect_sound = CollectSound.WEAPON
     mins, maxs = [-16.0, -16.0, 0.0], [16.0, 16.0, 56.0]
-    print_text = b"You got the Nailgun\n"
+    print_text = b"You got the nailgun\n"
 
     @staticmethod
     def will_collect(stats, is_coop):
