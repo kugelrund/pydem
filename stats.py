@@ -500,14 +500,15 @@ def is_sound_from_client_position(client_origin, sound_origin) -> bool:
     # an entity update and when the sound is created.
     return max_diff < 1.5
 
-def find_closest_collectable_to_client(client_origin, collectable_active_frames):
+def find_closest_collectable_frame_to_client(client_origin,
+                                             collectable_active_frames):
     closest_distance = math.inf
     closest_collectable = None
     for collectable_frame in collectable_active_frames:
         distance = collision.distance(collision.bounds_player(client_origin),
                                       collectable_frame.bounds())
         if distance < closest_distance:
-            closest_collectable = collectable_frame.collectable
+            closest_collectable = collectable_frame
             closest_distance = distance
     return closest_collectable, closest_distance
 
@@ -536,26 +537,25 @@ def get_collections(demo):
 
         statics_candidates = [static for static in statics_by_frame[event.block_index-1]
                               if static.collectable.type.collect_sound == event.sound]
-        closest_static, distance_static = find_closest_collectable_to_client(
+        closest_static, distance_static = find_closest_collectable_frame_to_client(
             client_origin, statics_candidates)
 
         closest_backpack = None
         distance_backpack = math.inf
         if event.sound == CollectSound.AMMO:
-            closest_backpack, distance_backpack = find_closest_collectable_to_client(
+            closest_backpack, distance_backpack = find_closest_collectable_frame_to_client(
                 client_origin, backpacks_by_frame[event.block_index-1])
 
         if distance_static < distance_backpack:
+            statics_by_frame[event.block_index-1].remove(closest_static)
             distance = distance_static
-            closest = closest_static
-            static_collections[event.block_index].append(closest_static)
+            closest = closest_static.collectable
+            static_collections[event.block_index].append(closest)
         else:
+            backpacks_by_frame[event.block_index-1].remove(closest_backpack)
             distance = distance_backpack
-            closest = closest_backpack
-            backpack_collections[event.block_index].append(closest_backpack)
-        # TODO: allow multiple collectables per sound event
-        # probably just have to remove closest from the statics_by_frame or
-        # backpacks_by_frame lists?
+            closest = closest_backpack.collectable
+            backpack_collections[event.block_index].append(closest)
         assert distance < 0.5
         assert event.sound == closest.type.collect_sound
         closest.sound_event = event
