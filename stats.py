@@ -20,35 +20,6 @@ class CollectSound(enum.Enum):
 COLLECT_SOUNDS = [x.value for x in CollectSound]
 
 
-@dataclasses.dataclass
-class Health:
-    value: int
-
-@dataclasses.dataclass
-class Shells:
-    value: int
-
-@dataclasses.dataclass
-class Nails:
-    value: int
-
-@dataclasses.dataclass
-class Rockets:
-    value: int
-
-@dataclasses.dataclass
-class Cells:
-    value: int
-
-@dataclasses.dataclass
-class Armor:
-    value: int
-
-@dataclasses.dataclass
-class Item:
-    value: ItemFlags
-
-
 MIN_HEALTH = 1
 MAX_HEALTH = 100
 MAX_MEGAHEALTH = 250
@@ -61,11 +32,73 @@ MAX_ROCKETS = 100
 MIN_CELLS = 0
 MAX_CELLS = 100
 
-def bounded_health(health: float, items: ItemFlags) -> float:
-    if items & ItemFlags.SUPERHEALTH:
-        return min(health, MAX_MEGAHEALTH)
-    else:
-        return min(health, MAX_HEALTH)
+@dataclasses.dataclass
+class Health:
+    name = 'health'
+    value: int
+    @staticmethod
+    def bound(value: int, items: ItemFlags) -> int:
+        if items & ItemFlags.SUPERHEALTH:
+            return min(value, MAX_MEGAHEALTH)
+        else:
+            return min(value, MAX_HEALTH)
+
+@dataclasses.dataclass
+class Shells:
+    name = 'shells'
+    min = MIN_SHELLS
+    value: int
+    @staticmethod
+    def bound(value: int, items: ItemFlags) -> int:
+        return min(value, MAX_SHELLS)
+
+@dataclasses.dataclass
+class Nails:
+    name = 'nails'
+    min = MIN_NAILS
+    value: int
+    @staticmethod
+    def bound(value: int, items: ItemFlags) -> int:
+        return min(value, MAX_NAILS)
+
+@dataclasses.dataclass
+class Rockets:
+    name = 'rockets'
+    min = MIN_ROCKETS
+    value: int
+    @staticmethod
+    def bound(value: int, items: ItemFlags) -> int:
+        return min(value, MAX_ROCKETS)
+
+@dataclasses.dataclass
+class Cells:
+    name = 'cells'
+    min = MIN_CELLS
+    value: int
+    @staticmethod
+    def bound(value: int, items: ItemFlags) -> int:
+        return min(value, MAX_CELLS)
+
+@dataclasses.dataclass
+class Armor:
+    value: int
+
+@dataclasses.dataclass
+class Item:
+    value: ItemFlags
+
+# Convenience wrapper around ClientStats to be able to access it dynamically
+# with above stat types
+class ClientStatsAccessor(format.ClientStats):
+    def __init__(self, data: format.ClientStats):
+        super().__init__(data.items, data.health, data.armor, data.shells,
+                         data.nails, data.rockets, data.cells,
+                         data.activeweapon, data.ammo)
+    def __getitem__(self, stat_type):
+        return getattr(self, stat_type.name)
+    def __setitem__(self, stat_type, value):
+        setattr(self, stat_type.name, value)
+
 
 def get_damage_reduction(items: ItemFlags) -> float:
     damage_reduction = 0.0
@@ -294,32 +327,6 @@ class CollectableBackpack:
         return True
 
 
-
-def get_pickup_health(collectable):
-    return sum([x.value for x in collectable.gives if isinstance(x, Health)])
-
-def get_pickup_shells(collectable):
-    return sum([x.value for x in collectable.gives if isinstance(x, Shells)])
-
-def get_pickup_nails(collectable):
-    return sum([x.value for x in collectable.gives if isinstance(x, Nails)])
-
-def get_pickup_rockets(collectable):
-    return sum([x.value for x in collectable.gives if isinstance(x, Rockets)])
-
-def get_pickup_cells(collectable):
-    return sum([x.value for x in collectable.gives if isinstance(x, Cells)])
-
-def get_pickup_armor(collectable):
-    return sum([x.value for x in collectable.gives if isinstance(x, Armor)])
-
-def get_pickup_items(collectable):
-    item_flags = 0
-    for flags in [x.value for x in collectable.gives if isinstance(x, Item)]:
-        item_flags |= flags
-    return item_flags
-
-
 COLLECTABLE_MODELS_MAP = {
     b'maps/b_bh10.bsp': CollectableHealth15,
     b'maps/b_bh25.bsp': CollectableHealth25,
@@ -358,20 +365,13 @@ class Collectable:
     def will_collect(self, stats, is_coop):
         return self.type.will_collect(stats, is_coop)
 
-    def get_pickup_health(self):
-        return get_pickup_health(self.type)
-    def get_pickup_shells(self):
-        return get_pickup_shells(self.type)
-    def get_pickup_nails(self):
-        return get_pickup_nails(self.type)
-    def get_pickup_rockets(self):
-        return get_pickup_rockets(self.type)
-    def get_pickup_cells(self):
-        return get_pickup_cells(self.type)
-    def get_pickup_armor(self):
-        return get_pickup_armor(self.type)
+    def get_pickup(self, stat_type):
+        return sum(x.value for x in self.type.gives if isinstance(x, stat_type))
     def get_pickup_items(self):
-        return get_pickup_items(self.type)
+        item_flags = 0
+        for flags in [x.value for x in self.type.gives if isinstance(x, Item)]:
+            item_flags |= flags
+        return item_flags
 
     def bounds(self, origin):
         return collision.bounds_collectable(origin, self.type.mins, self.type.maxs)
@@ -627,14 +627,15 @@ def rebuild_stats(new_start: format.ClientStats,
     assert len(old_stats_list) == len(damage)
 
     old_stats_previous = None
-    stats = copy.deepcopy(new_start)
+    stats = ClientStatsAccessor(copy.deepcopy(new_start))
     stats_list = []
     actual_collections = [[] for _ in range(len(possible_collections))]
 
-    for i, old_stats in enumerate(old_stats_list):
-        if not old_stats:
+    for i, old_stats_data in enumerate(old_stats_list):
+        if not old_stats_data:
             stats_list.append(None)
             continue
+        old_stats = ClientStatsAccessor(old_stats_data)
         if not old_stats_previous:
             old_stats_previous = old_stats
 
@@ -659,19 +660,10 @@ def rebuild_stats(new_start: format.ClientStats,
         #assert stats.health >= MIN_HEALTH
         assert stats.armor >= 0
 
-        lost_shells = max(0, old_stats_previous.shells - old_stats.shells)
-        lost_nails = max(0, old_stats_previous.nails - old_stats.nails)
-        lost_rockets = max(0, old_stats_previous.rockets - old_stats.rockets)
-        lost_cells = max(0, old_stats_previous.cells - old_stats.cells)
-
-        stats.shells -= lost_shells
-        stats.nails -= lost_nails
-        stats.rockets -= lost_rockets
-        stats.cells -= lost_cells
-        assert stats.shells >= MIN_SHELLS
-        assert stats.nails >= MIN_NAILS
-        assert stats.rockets >= MIN_ROCKETS
-        assert stats.cells >= MIN_CELLS
+        for stat_type in (Shells, Nails, Rockets, Cells):
+            lost = max(0, old_stats_previous[stat_type] - old_stats[stat_type])
+            stats[stat_type] -= lost
+            assert stats[stat_type] >= stat_type.min
 
         for collectable in possible_collections[i]:
             if collectable.will_collect(stats, is_coop) and collectable.frame_collected > i:
@@ -687,18 +679,11 @@ def rebuild_stats(new_start: format.ClientStats,
                 collectable.frame_collected = i
 
                 stats.items |= collectable.get_pickup_items()
-                collected_health = collectable.get_pickup_health()
-                collected_shells = collectable.get_pickup_shells()
-                collected_nails = collectable.get_pickup_nails()
-                collected_rockets = collectable.get_pickup_rockets()
-                collected_cells = collectable.get_pickup_cells()
-                collected_armor = collectable.get_pickup_armor()
-                stats.health = bounded_health(stats.health + collected_health,
-                                              stats.items)
-                stats.shells = min(MAX_SHELLS, stats.shells + collected_shells)
-                stats.nails = min(MAX_NAILS, stats.nails + collected_nails)
-                stats.rockets = min(MAX_ROCKETS, stats.rockets + collected_rockets)
-                stats.cells = min(MAX_NAILS, stats.cells + collected_cells)
+                for stat_type in (Health, Shells, Nails, Rockets, Cells):
+                    collected_value = collectable.get_pickup(stat_type)
+                    stats[stat_type] = stat_type.bound(
+                        stats[stat_type] + collected_value, stats.items)
+                collected_armor = collectable.get_pickup(Armor)
                 if collected_armor > 0:
                     stats.armor = collected_armor
 
@@ -708,22 +693,14 @@ def rebuild_stats(new_start: format.ClientStats,
         stats.items &= ~removed_items
 
         if backpack_collections[i]:
-            if old_stats.shells > old_stats_previous.shells:
-                # TODO assert no other shells collection, that would make things difficult
-                backpack_shells = old_stats.shells - old_stats_previous.shells
-                stats.shells = min(MAX_SHELLS, stats.shells + backpack_shells)
-            if old_stats.nails > old_stats_previous.nails:
-                # TODO assert no other nails collection, that would make things difficult
-                backpack_nails = old_stats.nails - old_stats_previous.nails
-                stats.nails = min(MAX_NAILS, stats.nails + backpack_nails)
-            if old_stats.rockets > old_stats_previous.rockets:
-                # TODO assert no other rockets collection, that would make things difficult
-                backpack_rockets = old_stats.rockets - old_stats_previous.rockets
-                stats.rockets = min(MAX_ROCKETS, stats.rockets + backpack_rockets)
-            if old_stats.cells > old_stats_previous.cells:
-                # TODO assert no other cells collection, that would make things difficult
-                backpack_cells = old_stats.cells - old_stats_previous.cells
-                stats.cells = min(MAX_NAILS, stats.cells + backpack_cells)
+            for stat_type in (Shells, Nails, Rockets, Cells):
+                # TODO assert no other collection of this stat_type, that would
+                # make things difficult
+                if old_stats[stat_type] > old_stats_previous[stat_type]:
+                    backpack_value = (old_stats[stat_type] -
+                                      old_stats_previous[stat_type])
+                    stats[stat_type] = stat_type.bound(
+                        stats[stat_type] + backpack_value, stats.items)
             assert (old_stats.shells > old_stats_previous.shells or
                     old_stats.nails > old_stats_previous.nails or
                     old_stats.rockets > old_stats_previous.rockets or
