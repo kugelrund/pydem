@@ -61,6 +61,12 @@ MAX_ROCKETS = 100
 MIN_CELLS = 0
 MAX_CELLS = 100
 
+def bounded_health(health: float, items: ItemFlags) -> float:
+    if items & ItemFlags.SUPERHEALTH:
+        return min(health, MAX_MEGAHEALTH)
+    else:
+        return min(health, MAX_HEALTH)
+
 def get_damage_reduction(items: ItemFlags) -> float:
     damage_reduction = 0.0
     if items & ItemFlags.ARMOR1:
@@ -687,10 +693,8 @@ def rebuild_stats(new_start: format.ClientStats,
                 collected_rockets = collectable.get_pickup_rockets()
                 collected_cells = collectable.get_pickup_cells()
                 collected_armor = collectable.get_pickup_armor()
-                if stats.items & ItemFlags.SUPERHEALTH:
-                    stats.health = min(250, stats.health + collected_health)
-                else:
-                    stats.health = min(MAX_HEALTH, stats.health + collected_health)
+                stats.health = bounded_health(stats.health + collected_health,
+                                              stats.items)
                 stats.shells = min(MAX_SHELLS, stats.shells + collected_shells)
                 stats.nails = min(MAX_NAILS, stats.nails + collected_nails)
                 stats.rockets = min(MAX_ROCKETS, stats.rockets + collected_rockets)
