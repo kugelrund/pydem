@@ -112,6 +112,14 @@ def get_damage_reduction(items: ItemFlags) -> float:
         damage_reduction = 0.8
     return damage_reduction
 
+def lost_armor_bounds(damage_ceiled: float, armor: int, reduction: float):
+    assert damage_ceiled == math.ceil(damage_ceiled)
+    damage_floored = damage_ceiled - 1.0
+    lost_armor_lower_bound = min(armor, math.ceil(reduction * damage_floored))
+    lost_armor_upper_bound = min(armor, math.ceil(reduction * damage_ceiled))
+    return lost_armor_lower_bound, lost_armor_upper_bound
+
+
 class CollectableHealth15:
     gives = [Health(15)]
     collect_sound = CollectSound.HP15
@@ -728,6 +736,24 @@ def get_damage(demo):
     return damage
 
 
+def verify_damage_message(damage: messages.DamageMessage, armor: int, reduction: float):
+    damage_ceiled = damage.blood + damage.armor
+    assert damage_ceiled == math.ceil(damage_ceiled)
+    # this can break down if there are several separate damage sources being
+    # applied on the same frame, and the sum of the rounded up values is
+    # larger than rounding up the summed value
+    if reduction == 0.0:
+        assert damage.blood == damage_ceiled
+    else:
+        armor_lower_bound, armor_upper_bound = lost_armor_bounds(
+            damage_ceiled, armor, reduction)
+        assert armor_lower_bound <= damage.armor
+        assert damage.armor <= armor_upper_bound
+        blood_lower_bound = damage_ceiled - armor_upper_bound
+        blood_upper_bound = damage_ceiled - armor_lower_bound
+        assert blood_lower_bound <= damage.blood
+        assert damage.blood <= blood_upper_bound
+
 def get_ammo_for_activeweapon(stats: format.ClientStats):
     if stats.activeweapon == 0:  # axe
         return 0, 0
@@ -767,24 +793,42 @@ def rebuild_stats(new_start: format.ClientStats,
         if not old_stats_previous:
             old_stats_previous = old_stats
 
-        if old_stats.armor == 0:
-            orig_damage = damage[i].blood + damage[i].armor
+        old_lost_armor = damage[i].armor
+        if all(c.get_pickup(Armor) == 0.0 for c in old_static_collections[i]):
+            assert (old_stats_previous.armor - old_stats.armor) == old_lost_armor
+
+        old_reduction = get_damage_reduction(old_stats_previous.items)
+        verify_damage_message(damage[i], old_stats_previous.armor, old_reduction)
+        old_damage_ceiled = damage[i].blood + damage[i].armor
+
+        old_collected_health = sum(c.get_pickup(Health)
+                                   for c in old_static_collections[i])
+        old_stats_health_before_loss = Health.bound(
+            old_stats_previous.health + old_collected_health, old_stats.items)
+        old_lost_health = (old_stats_health_before_loss - old_stats.health)
+        assert old_lost_health >= 0.0
+
+        new_reduction = get_damage_reduction(stats.items)
+        if (old_damage_ceiled == 0.0 or (old_reduction == new_reduction and (old_lost_armor == 0.0 or (old_lost_armor != old_stats_previous.armor and old_lost_armor <= stats.armor)))):
+            stats.armor -= old_lost_armor
+            stats.health -= old_lost_health
         else:
-            old_damage_reduction = get_damage_reduction(old_stats.items)
-            orig_damage = math.floor(damage[i].armor / old_damage_reduction)
+            # TODO: gotta replace the damage message... :(
+            lost_armor_lower_bound, lost_armor_upper_bound = lost_armor_bounds(
+                old_damage_ceiled, stats.armor, new_reduction)
+            if lost_armor_lower_bound != lost_armor_upper_bound:
+                print("Warning: Health/Armor reconstruction might be inaccurate")
+            lost_armor = lost_armor_upper_bound
+            stats.armor -= lost_armor
+            # we can only handle either fully ignored damage, or fully applied
+            # damage, not something in between
+            assert old_lost_health == 0.0 or old_lost_health == damage[i].blood
+            if old_lost_health != 0.0:
+                lost_health = old_damage_ceiled - lost_armor
+                stats.health -= lost_health
 
-        damage_reduction = get_damage_reduction(stats.items)
-        net_damage_armor = min(stats.armor, math.ceil(orig_damage * damage_reduction))
-        net_damage_health = math.ceil(orig_damage - net_damage_armor)
-
-        stats.armor -= net_damage_armor
         if stats.armor == 0:
             stats.items &= ~(ItemFlags.ARMOR1|ItemFlags.ARMOR2|ItemFlags.ARMOR3)
-        if old_stats.health < old_stats_previous.health:
-            if net_damage_armor == damage[i].armor:
-                stats.health += old_stats.health - old_stats_previous.health
-            else:
-                stats.health -= net_damage_health
         #assert stats.health >= MIN_HEALTH
         assert stats.armor >= 0
 
