@@ -121,6 +121,9 @@ class CollectableHealth15:
     @staticmethod
     def will_collect(stats, is_coop):
         return stats.health < MAX_HEALTH
+    @staticmethod
+    def will_disappear(stats, is_coop):
+        return True
 
 class CollectableHealth25:
     gives = [Health(25)]
@@ -131,6 +134,9 @@ class CollectableHealth25:
     @staticmethod
     def will_collect(stats, is_coop):
         return stats.health < MAX_HEALTH
+    @staticmethod
+    def will_disappear(stats, is_coop):
+        return True
 
 class CollectableHealth100:
     gives = [Item(ItemFlags.SUPERHEALTH), Health(100)]
@@ -140,6 +146,9 @@ class CollectableHealth100:
 
     @staticmethod
     def will_collect(stats, is_coop):
+        return True
+    @staticmethod
+    def will_disappear(stats, is_coop):
         return True
 
 class CollectableShells20:
@@ -151,6 +160,9 @@ class CollectableShells20:
     @staticmethod
     def will_collect(stats, is_coop):
         return stats.shells < MAX_SHELLS
+    @staticmethod
+    def will_disappear(stats, is_coop):
+        return True
 
 class CollectableShells40:
     gives = [Shells(40)]
@@ -161,6 +173,9 @@ class CollectableShells40:
     @staticmethod
     def will_collect(stats, is_coop):
         return stats.shells < MAX_SHELLS
+    @staticmethod
+    def will_disappear(stats, is_coop):
+        return True
 
 class CollectableNails25:
     gives = [Nails(25)]
@@ -171,6 +186,9 @@ class CollectableNails25:
     @staticmethod
     def will_collect(stats, is_coop):
         return stats.nails < MAX_NAILS
+    @staticmethod
+    def will_disappear(stats, is_coop):
+        return True
 
 class CollectableNails50:
     gives = [Nails(50)]
@@ -181,6 +199,9 @@ class CollectableNails50:
     @staticmethod
     def will_collect(stats, is_coop):
         return stats.nails < MAX_NAILS
+    @staticmethod
+    def will_disappear(stats, is_coop):
+        return True
 
 class CollectableRockets5:
     gives = [Rockets(5)]
@@ -191,6 +212,9 @@ class CollectableRockets5:
     @staticmethod
     def will_collect(stats, is_coop):
         return stats.rockets < MAX_ROCKETS
+    @staticmethod
+    def will_disappear(stats, is_coop):
+        return True
 
 class CollectableRockets10:
     gives = [Rockets(10)]
@@ -201,6 +225,9 @@ class CollectableRockets10:
     @staticmethod
     def will_collect(stats, is_coop):
         return stats.rockets < MAX_ROCKETS
+    @staticmethod
+    def will_disappear(stats, is_coop):
+        return True
 
 class CollectableCells6:
     gives = [Cells(6)]
@@ -211,6 +238,9 @@ class CollectableCells6:
     @staticmethod
     def will_collect(stats, is_coop):
         return stats.cells < MAX_CELLS
+    @staticmethod
+    def will_disappear(stats, is_coop):
+        return True
 
 class CollectableCells12:
     gives = [Cells(12)]
@@ -221,6 +251,9 @@ class CollectableCells12:
     @staticmethod
     def will_collect(stats, is_coop):
         return stats.cells < MAX_CELLS
+    @staticmethod
+    def will_disappear(stats, is_coop):
+        return True
 
 class CollectableGreenArmor:
     armor_value = 100
@@ -233,6 +266,9 @@ class CollectableGreenArmor:
     def will_collect(cls, stats, is_coop):
         return (get_damage_reduction(ItemFlags.ARMOR1) * cls.armor_value >=
                 get_damage_reduction(stats.items) * stats.armor)
+    @staticmethod
+    def will_disappear(stats, is_coop):
+        return True
 
 class CollectableYellowArmor:
     armor_value = 150
@@ -245,6 +281,9 @@ class CollectableYellowArmor:
     def will_collect(cls, stats, is_coop):
         return (get_damage_reduction(ItemFlags.ARMOR2) * cls.armor_value >=
                 get_damage_reduction(stats.items) * stats.armor)
+    @staticmethod
+    def will_disappear(stats, is_coop):
+        return True
 
 class CollectableRedArmor:
     armor_value = 200
@@ -257,6 +296,9 @@ class CollectableRedArmor:
     def will_collect(cls, stats, is_coop):
         return (get_damage_reduction(ItemFlags.ARMOR3) * cls.armor_value >=
                 get_damage_reduction(stats.items) * stats.armor)
+    @staticmethod
+    def will_disappear(stats, is_coop):
+        return True
 
 class CollectableSuperShotgun:
     gives = [Item(ItemFlags.SUPER_SHOTGUN), Shells(5)]
@@ -267,6 +309,9 @@ class CollectableSuperShotgun:
     @staticmethod
     def will_collect(stats, is_coop):
         return not is_coop or not (stats.items & ItemFlags.SUPER_SHOTGUN)
+    @staticmethod
+    def will_disappear(stats, is_coop):
+        return not is_coop
 
 class CollectableNailgun:
     gives = [Item(ItemFlags.NAILGUN), Nails(30)]
@@ -277,6 +322,9 @@ class CollectableNailgun:
     @staticmethod
     def will_collect(stats, is_coop):
         return not is_coop or not (stats.items & ItemFlags.NAILGUN)
+    @staticmethod
+    def will_disappear(stats, is_coop):
+        return not is_coop
 
 class CollectableSuperNailgun:
     gives = [Item(ItemFlags.SUPER_NAILGUN), Nails(30)]
@@ -287,6 +335,9 @@ class CollectableSuperNailgun:
     @staticmethod
     def will_collect(stats, is_coop):
         return not is_coop or not (stats.items & ItemFlags.SUPER_NAILGUN)
+    @staticmethod
+    def will_disappear(stats, is_coop):
+        return not is_coop
 
 class CollectableGrenadeLauncher:
     gives = [Item(ItemFlags.GRENADE_LAUNCHER), Rockets(5)]
@@ -297,6 +348,9 @@ class CollectableGrenadeLauncher:
     @staticmethod
     def will_collect(stats, is_coop):
         return not is_coop or not (stats.items & ItemFlags.GRENADE_LAUNCHER)
+    @staticmethod
+    def will_disappear(stats, is_coop):
+        return not is_coop
 
 class CollectableRocketLauncher:
     gives = [Item(ItemFlags.ROCKET_LAUNCHER), Rockets(5)]
@@ -307,6 +361,9 @@ class CollectableRocketLauncher:
     @staticmethod
     def will_collect(stats, is_coop):
         return not is_coop or not (stats.items & ItemFlags.ROCKET_LAUNCHER)
+    @staticmethod
+    def will_disappear(stats, is_coop):
+        return not is_coop
 
 class CollectableLightningGun:
     gives = [Item(ItemFlags.LIGHTNING), Cells(15)]
@@ -317,6 +374,9 @@ class CollectableLightningGun:
     @staticmethod
     def will_collect(stats, is_coop):
         return not is_coop or not (stats.items & ItemFlags.LIGHTNING)
+    @staticmethod
+    def will_disappear(stats, is_coop):
+        return not is_coop
 
 @dataclasses.dataclass
 class CollectableBackpack:
@@ -326,6 +386,9 @@ class CollectableBackpack:
 
     @staticmethod
     def will_collect(stats, is_coop):
+        return True
+    @staticmethod
+    def will_disappear(stats, is_coop):
         return True
 
 
@@ -367,10 +430,12 @@ class Collectable:
     entity_num: int
     type: None
     collect_event: CollectEvent
-    frame_collected: int
+    frame_consumed: int
 
     def will_collect(self, stats, is_coop):
         return self.type.will_collect(stats, is_coop)
+    def will_disappear(self, stats, is_coop):
+        return self.type.will_disappear(stats, is_coop)
 
     def get_pickup(self, stat_type):
         return sum(x.value for x in self.type.gives if isinstance(x, stat_type))
@@ -734,7 +799,7 @@ def rebuild_stats(new_start: format.ClientStats,
             assert stats[stat_type] >= stat_type.min
 
         for collectable in possible_collections[i]:
-            if collectable.will_collect(stats, is_coop) and collectable.frame_collected > i:
+            if collectable.will_collect(stats, is_coop) and collectable.frame_consumed > i:
                 picked_up_in_original = any(c.entity_num == collectable.entity_num for c in old_static_collections[i])
                 if collectable.will_collect(old_stats_previous, is_coop) and not picked_up_in_original:
                     # for some reason this collectable wasnt picked up in original demo
@@ -744,7 +809,8 @@ def rebuild_stats(new_start: format.ClientStats,
                     continue
 
                 actual_collections[i].append(collectable)
-                collectable.frame_collected = i
+                if collectable.will_disappear(stats, is_coop):
+                    collectable.frame_consumed = i
 
                 stats.items |= collectable.get_pickup_items()
                 for stat_type in (Health, Shells, Nails, Rockets, Cells):
