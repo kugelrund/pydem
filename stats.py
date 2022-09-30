@@ -706,20 +706,43 @@ def get_possible_collections(demo):
     collectables = get_static_collectables(demo, models_precache)
     client_positions = get_client_positions(demo, get_viewent_num(demo))
     first_active_block_index = get_first_active_block_index(demo)
+    original_collections = get_static_collections(demo)
 
     possible_pickups = [[] for _ in range(len(demo.blocks))]
     for i, pos in enumerate(client_positions):
         for collectable in collectables.values():
             tolerance = 0.0
-            if i == first_active_block_index:
+            if i < first_active_block_index:
+                # do not expect any collection before first active block index
+                tolerance = -math.inf
+            elif i == first_active_block_index:
                 # It seems like client position is not 100% reliable on the
                 # first frame. Instant pickups may therefore not be recognized
                 # with a tolerance of 0. Therefore we allow a bit more leeway on
                 # the first frame
                 tolerance = 0.5
-            # somehow need frame=i-2 for e1m3_023?
-            if collision.distance(collision.bounds_player(pos),
-                                  collectable.bounds(frame=i-2)) <= tolerance:
+            distance = collision.distance(collision.bounds_player(pos),
+                                          collectable.bounds(frame=i-1))
+
+            orig_collection = [c for c in original_collections[i]
+                if c.entity_num == collectable.collectable.entity_num]
+            assert len(orig_collection) <= 1
+            is_collected_in_original = len(orig_collection) > 0
+            if is_collected_in_original:
+                orig_collection = orig_collection[0]
+                assert distance <= tolerance
+                center = collision.PlayerBounds.center(pos)
+                assert abs(orig_collection.sound_event.origin[0] - center[0]) <= tolerance
+                assert abs(orig_collection.sound_event.origin[1] - center[1]) <= tolerance
+                # z-coordinate does not always seem accurate for some reason
+                assert abs(orig_collection.sound_event.origin[2] - center[2]) < 1.0
+
+            # Usually, collections only seem to happen when bounding boxes are
+            # strictly overlapping (i.e. distance < 0.0). In some exceptions,
+            # touching (i.e. distance == 0.0) can be enough though. To include
+            # those special cases, we also add it, if it was picked up in the
+            # original (and we assert distance == 0.0 above for that case).
+            if distance < tolerance or is_collected_in_original:
                 possible_pickups[i].append(collectable.collectable)
     return possible_pickups
 
