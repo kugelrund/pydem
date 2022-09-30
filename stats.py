@@ -769,8 +769,8 @@ def rebuild_stats(new_start: format.ClientStats,
         stats.activeweapon = old_stats.activeweapon  # TODO: set to new_start first. then set to something else if 0 ammo is reached. Also fix which ammo is shown in hud with that
         ammo_item_flag, stats.ammo = get_ammo_for_activeweapon(stats)
         if ammo_item_flag != 0 and stats.ammo <= 0:
-            pass  # TODO: switch in the next x frames
-            #raise ValueError("This weapon cannot be active")
+            # TODO: switch in the next x frames
+            print("Warning: This weapon cannot be active")
         stats.items &= ~(ItemFlags.SHELLS|ItemFlags.NAILS|ItemFlags.ROCKETS|ItemFlags.CELLS)
         stats.items |= ammo_item_flag
 
