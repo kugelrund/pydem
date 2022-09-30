@@ -621,17 +621,29 @@ def get_backpack_collections(demo):
     _, backpack_collections = get_collections(demo)
     return backpack_collections
 
+def get_first_active_block_index(demo):
+    for i, block in enumerate(demo.blocks):
+        for m in block.messages:
+            if isinstance(m, messages.TimeMessage):
+                if m.time > 1.22777784:
+                    return i
+
 def get_possible_collections(demo):
     models_precache, _ = get_precaches(demo)
     collectables = get_static_collectables(demo, models_precache)
     client_positions = get_client_positions(demo, get_viewent_num(demo))
+    first_active_block_index = get_first_active_block_index(demo)
 
     possible_pickups = [[] for _ in range(len(demo.blocks))]
     for i, pos in enumerate(client_positions):
         for collectable in collectables.values():
             tolerance = 0.0
-            if i == 3:
-                tolerance = 0.5  # for the instant pickup on e1m5_009
+            if i == first_active_block_index:
+                # It seems like client position is not 100% reliable on the
+                # first frame. Instant pickups may therefore not be recognized
+                # with a tolerance of 0. Therefore we allow a bit more leeway on
+                # the first frame
+                tolerance = 0.5
             # somehow need frame=i-2 for e1m3_023?
             if collision.distance(collision.bounds_player(pos),
                                   collectable.bounds(frame=i-2)) <= tolerance:
