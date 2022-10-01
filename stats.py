@@ -912,6 +912,51 @@ def rebuild_stats(new_start: format.ClientStats,
     return stats_list, actual_collections
 
 
+def remove_collection_sound(sound_num: int, viewent_num: int,
+                            block: format.Block):
+    sounds_to_remove = [m for m in block.messages
+                        if (isinstance(m, messages.SoundMessage) and
+                            m.sound_num == sound_num and m.ent == viewent_num)]
+    assert len(sounds_to_remove) == 1
+    block.messages.remove(sounds_to_remove[0])
+
+def add_collection_sound(collect_sound: CollectSound, client_pos: list[float],
+                         viewent_num: int, sounds_precache: list[str],
+                         block: format.Block):
+    sound_name = collect_sound.value
+    sound_num = sounds_precache.index(sound_name)
+    sound_pos = collision.PlayerBounds.center(client_pos)
+    block.messages.append(messages.SoundMessage(flags=0, volume=255,
+        attenuation=1.0, ent=viewent_num, channel=3,
+        sound_num=sound_num, pos=sound_pos))
+
+def keep_entity_after(start_block_index: int, entity_num: int,
+                      last_origin: list[float], demo: format.Demo):
+    # TODO: can we somehow figure out if the collectable is in view to not spam
+    # these messages in every block?
+    flags = messages.UpdateFlags.SIGNAL
+    if entity_num > 255:
+        flags |= messages.UpdateFlags.MOREBITS|messages.UpdateFlags.LONGENTITY
+    if last_origin:
+        flags |= (messages.UpdateFlags.ORIGIN1|messages.UpdateFlags.ORIGIN2|
+                  messages.UpdateFlags.ORIGIN3)
+    message = messages.EntityUpdateMessage(
+        flags, entity_num, None, None, None, None, None, last_origin,
+        None, None, None, None, None, None, None)
+    for block in demo.blocks[start_block_index:]:
+        if any([isinstance(m, messages.TimeMessage) for m in block.messages]):
+            block.messages.append(message)
+
+def remove_entity_after(start_block_index: int, entity_num: int,
+                        demo: format.Demo):
+    for block in demo.blocks[start_block_index:]:
+        for m in block.messages:
+            if not isinstance(m, messages.EntityUpdateMessage):
+                continue
+            if m.num != entity_num:
+                continue
+            block.messages.remove(m)
+
 def fix_collection_events(actual_collections, demo):
     models_precache, sounds_precache = get_precaches(demo)
     changeable_collections = get_static_collections(demo)
@@ -934,48 +979,26 @@ def fix_collection_events(actual_collections, demo):
         for c in collections_to_remove:
             print(f"removed collection: {c.type} at time {times[i]}")
 
-            sounds_to_remove = [m for m in block.messages
-                                if (isinstance(m, messages.SoundMessage) and
-                                    m.sound_num == c.sound_event.sound_num)]
-            assert len(sounds_to_remove) == 1
-            block.messages.remove(sounds_to_remove[0])
+            remove_collection_sound(c.sound_event.sound_num, viewent_num, block)
 
             # TODO: assert that this really is the info block for this pickup with
             # pickup message, screenflash and so on
             blocks_to_remove.append(i + 1)
 
-            # TODO: can we somehow figure out if the collectable is in view to not spam
-            # these messages in every block?
-            flags = messages.UpdateFlags.SIGNAL
-            if c.entity_num > 255:
-                flags |= messages.UpdateFlags.MOREBITS|messages.UpdateFlags.LONGENTITY
             last_origin = None
             if (static_collectables[c.entity_num].origins[i-1] !=
                 static_collectables[c.entity_num].origins[0]):
                 last_origin = static_collectables[c.entity_num].origins[i-1]
-                flags |= (messages.UpdateFlags.ORIGIN1|
-                          messages.UpdateFlags.ORIGIN2|
-                          messages.UpdateFlags.ORIGIN3)
-            message = messages.EntityUpdateMessage(
-                flags, c.entity_num, None, None, None, None, None, last_origin,
-                None, None, None, None, None, None, None)
-            for j in range(i, len(demo.blocks)):
-                if any([isinstance(m, messages.TimeMessage) for m in demo.blocks[j].messages]):
-                    demo.blocks[j].messages.append(message)
+            keep_entity_after(i, c.entity_num, last_origin, demo)
 
         for c in collections_to_add:
             print(f"added collection: {c.type} at time {times[i]}")
 
-            sound_name = c.type.collect_sound.value
-            sound_num = sounds_precache.index(sound_name)
-            block.messages.append(messages.SoundMessage(flags=0, volume=255,
-                attenuation=1.0, ent=viewent_num, channel=3, sound_num=sound_num,
-                pos=collision.PlayerBounds.center(client_positions[i])))
+            add_collection_sound(c.type.collect_sound, client_positions[i],
+                                 viewent_num, sounds_precache, block)
             block.messages.append(messages.PrintMessage(text=c.type.print_text))
             block.messages.append(messages.StuffTextMessage(text=b'bf\n'))
-            for j in range(i, len(demo.blocks)):
-                for m in [m for m in demo.blocks[j].messages if isinstance(m, messages.EntityUpdateMessage) and m.num == c.entity_num]:
-                    demo.blocks[j].messages.remove(m)
+            remove_entity_after(i, c.entity_num, demo)
 
     for i in reversed(blocks_to_remove):
         del demo.blocks[i]
