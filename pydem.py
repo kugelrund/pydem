@@ -8,6 +8,7 @@ import numpy
 import stats
 import format
 from messages import ItemFlags
+import printing
 import smoothing
 
 
@@ -100,6 +101,7 @@ def next_spawnparams(stats: format.ClientStats) -> format.ClientStats:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('demos', type=str, nargs='*', help="Path to input demo files.")
+    parser.add_argument('--remove_grenade_counter', action='store_true')
     parser.add_argument('--stats', action='store_true')
     parser.add_argument('--coop', dest='coop_demos', action='append', type=str, nargs='*',
                         help="Path to corresponding demo files for another player.")
@@ -107,10 +109,11 @@ def main():
     if args.coop_demos:
         assert args.stats  # TODO: Better error message
 
-    demo_paths = args.demos
+    demo_paths = []
+    demos = []
 
     if args.stats:
-        demo_paths_per_player = [demo_paths]
+        demo_paths_per_player = [args.demos]
         if args.coop_demos:
             demo_paths_per_player += args.coop_demos
 
@@ -119,6 +122,8 @@ def main():
             if not demo_previous_per_player:
                 demo_previous_per_player = [parse_demo(paths[0])
                                            for paths in demo_paths_per_player]
+                demo_paths.extend(demo_path_per_player)
+                demos.extend(demo_previous_per_player)
                 continue
             print("========== Fixing stats for " + ', '.join(demo_path_per_player) + " ==========")
             demo_per_player = [parse_demo(p) for p in demo_path_per_player]
@@ -128,11 +133,22 @@ def main():
             stats.apply_new_start_stats(new_stats_per_player, demo_per_player,
                                         is_coop=args.coop_demos)
 
-            for path, demo in zip(demo_path_per_player, demo_per_player):
-                with open(os.path.splitext(path)[-2] + '_out.dem', 'wb') as f:
-                    demo.write(f)
-
+            demo_paths.extend(demo_path_per_player)
+            demos.extend(demo_per_player)
             demo_previous_per_player = demo_per_player
+    else:
+        demo_paths = args.demos
+        demos = [parse_demo(path) for path in demo_paths]
+
+
+    if args.remove_grenade_counter:
+        for demo in demos:
+            printing.remove_grenade_counter(demo)
+
+
+    for path, demo in zip(demo_paths, demos):
+        with open(os.path.splitext(path)[-2] + '_out.dem', 'wb') as f:
+            demo.write(f)
 
 
 if __name__ == "__main__":
