@@ -1030,7 +1030,7 @@ def remove_obsolete_collection_events(old_collections, new_collections, demo,
 
             # TODO: assert that this really is the info block for this pickup with
             # pickup message, screenflash and so on
-            blocks_to_remove.append(i + 1)
+            demo.blocks[i+1].messages.clear()
 
             last_origin = None
             if (static_collectables[c.entity_num].origins[i-1] !=
@@ -1081,21 +1081,16 @@ def fix_collection_events(old_collections_per_player,
                           new_collections_per_player, demo_per_player):
     assert len(new_collections_per_player) == len(demo_per_player)
 
-    blocks_to_remove_per_player = []
     for old_collections, new_collections, demo in zip(old_collections_per_player,
                                                       new_collections_per_player,
                                                       demo_per_player):
-        blocks_to_remove_per_player.append(
-            remove_obsolete_collection_events(old_collections, new_collections, demo,
-                                              demo_per_player))
+        remove_obsolete_collection_events(old_collections, new_collections, demo,
+                                          demo_per_player)
     for old_collections, new_collections, demo in zip(old_collections_per_player,
                                                       new_collections_per_player,
                                                       demo_per_player):
         add_new_collection_events(old_collections, new_collections, demo,
                                   demo_per_player)
-    for blocks_to_remove, demo in zip(blocks_to_remove_per_player, demo_per_player):
-        for block_index in reversed(blocks_to_remove):
-            del demo.blocks[block_index]
 
 
 def apply_new_start_stats(start_stats_per_player: list[format.ClientStats],

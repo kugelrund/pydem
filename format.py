@@ -50,6 +50,9 @@ class Block:
         temp = io.BytesIO()
         for message in self.messages:
             message.write(temp)
+        if not self.messages:
+            # block without messages does not seem supported, so write a nop
+            messages.NopMessage().write(temp)
         block_len = temp.tell()
 
         bindata.write_i32(stream, block_len)
