@@ -161,6 +161,9 @@ class Demo:
                 client_stats.append(None)
         return client_stats
 
+    def get_final_client_stats(self):
+        return next(s for s in reversed(self.get_client_stats()) if s)
+
     def set_client_stats(self, client_stats_list):
         for block, client_stats in zip(self.blocks, client_stats_list):
             for m in block.messages:

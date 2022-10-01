@@ -100,39 +100,39 @@ def next_spawnparams(stats: format.ClientStats) -> format.ClientStats:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('demos', type=str, nargs='*', help="Path to input demo files.")
+    parser.add_argument('--stats', action='store_true')
+    parser.add_argument('--coop', dest='coop_demos', action='append', type=str, nargs='*',
+                        help="Path to corresponding demo files for another player.")
     args = parser.parse_args()
+    if args.coop_demos:
+        assert args.stats  # TODO: Better error message
 
-    demo = parse_demo(args.demos[0])
-    for i in range(len(args.demos) - 1):
-        demo_next = parse_demo(args.demos[i+1])
+    demo_paths = args.demos
 
-        #smooth(demo)
+    if args.stats:
+        demo_paths_per_player = [demo_paths]
+        if args.coop_demos:
+            demo_paths_per_player += args.coop_demos
 
+        demo_previous_per_player = None
+        for demo_path_per_player in zip(*demo_paths_per_player, strict=True):
+            if not demo_previous_per_player:
+                demo_previous_per_player = [parse_demo(paths[0])
+                                           for paths in demo_paths_per_player]
+                continue
+            print("========== Fixing stats for " + ', '.join(demo_path_per_player) + " ==========")
+            demo_per_player = [parse_demo(p) for p in demo_path_per_player]
 
-        client_stats_list = demo.get_client_stats()
-        final_client_stats = [client_stats for client_stats in client_stats_list if client_stats][-1]
-        next_client_stats = next_spawnparams(final_client_stats)
-        print(f'{args.demos[i]} ends with {next_client_stats}')
+            new_stats_per_player = [next_spawnparams(d.get_final_client_stats())
+                                   for d in demo_previous_per_player]
+            stats.apply_new_start_stats(new_stats_per_player, demo_per_player,
+                                        is_coop=args.coop_demos)
 
-        client_stats_list = demo_next.get_client_stats()
-        first_client_stats = [client_stats for client_stats in client_stats_list if client_stats][0]
-        print(f'{args.demos[i+1]} starts with {first_client_stats}')
+            for path, demo in zip(demo_path_per_player, demo_per_player):
+                with open(os.path.splitext(path)[-2] + '_out.dem', 'wb') as f:
+                    demo.write(f)
 
-        is_coop = True
-        new_client_stats_list, actual_collections = stats.rebuild_stats(
-            next_client_stats, client_stats_list,
-            stats.get_backpack_collections(demo_next),
-            stats.get_static_collections(demo_next),
-            stats.get_possible_collections(demo_next),
-            stats.get_damage(demo_next), is_coop)
-        #for a, b in zip(client_stats_list, new_client_stats_list):
-        #    assert a == b
-        demo_next.set_client_stats(new_client_stats_list)
-        stats.fix_collection_events(actual_collections, demo_next)
-
-        with open(os.path.splitext(args.demos[i+1])[-2] + '_out.dem', 'wb') as f:
-            demo_next.write(f)
-        demo = demo_next
+            demo_previous_per_player = demo_per_player
 
 
 if __name__ == "__main__":

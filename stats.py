@@ -438,7 +438,7 @@ class Collectable:
     entity_num: int
     type: None
     collect_event: CollectEvent
-    frame_consumed: int
+    time_consumed: float
 
     def will_collect(self, stats, is_coop):
         return self.type.will_collect(stats, is_coop)
@@ -482,7 +482,7 @@ def get_precaches(demo):
 
 def get_static_collectables(demo, models_precache):
     collectables_static = dict()
-    for i, block in enumerate(demo.blocks):
+    for block in demo.blocks:
         for m in block.messages:
             if isinstance(m, messages.SpawnBaselineMessage):
                 model_name = models_precache[m.modelindex]
@@ -498,21 +498,32 @@ def get_static_collectables(demo, models_precache):
                             collectable_type = CollectableRedArmor
                     else:
                         collectable_type = COLLECTABLE_MODELS_MAP[model_name]
-                    collectables_static[m.entity_num] = CollectablePersistant(
-                        Collectable(m.entity_num, collectable_type, None, math.inf),
-                        [list(m.origin) for _ in range(len(demo.blocks))])
-            elif isinstance(m, messages.EntityUpdateMessage):
-                if m.num in collectables_static:
-                    if m.flags & messages.UpdateFlags.ORIGIN1:
-                        collectables_static[m.num].origins[i][0] = m.origin[0]
-                    if m.flags & messages.UpdateFlags.ORIGIN2:
-                        collectables_static[m.num].origins[i][1] = m.origin[1]
-                    if m.flags & messages.UpdateFlags.ORIGIN3:
-                        collectables_static[m.num].origins[i][2] = m.origin[2]
+                    collectables_static[m.entity_num] = Collectable(
+                        m.entity_num, collectable_type, None, math.inf)
     return collectables_static
 
-def get_static_collectables_by_frame(demo, models_precache):
-    statics = get_static_collectables(demo, models_precache)
+def get_static_collectables_persistant(demo, collectables_static):
+    collectables_persistant = dict()
+    for i, block in enumerate(demo.blocks):
+        for m in block.messages:
+            if isinstance(m, messages.SpawnBaselineMessage):
+                if m.entity_num in collectables_static:
+                    assert not m.entity_num in collectables_persistant
+                    collectables_persistant[m.entity_num] = CollectablePersistant(
+                        collectables_static[m.entity_num],
+                        [list(m.origin) for _ in range(len(demo.blocks))])
+            elif isinstance(m, messages.EntityUpdateMessage):
+                if m.num in collectables_persistant:
+                    if m.flags & messages.UpdateFlags.ORIGIN1:
+                        collectables_persistant[m.num].origins[i][0] = m.origin[0]
+                    if m.flags & messages.UpdateFlags.ORIGIN2:
+                        collectables_persistant[m.num].origins[i][1] = m.origin[1]
+                    if m.flags & messages.UpdateFlags.ORIGIN3:
+                        collectables_persistant[m.num].origins[i][2] = m.origin[2]
+    return collectables_persistant
+
+def get_static_collectables_by_frame(demo, collectables_static):
+    statics = get_static_collectables_persistant(demo, collectables_static)
     collectables_by_frame = [[] for _ in range(len(demo.blocks))]
     for i, block in enumerate(demo.blocks):
         has_entity_update = False
@@ -645,9 +656,11 @@ def get_collections(demo):
     models_precache, sounds_precache = get_precaches(demo)
     viewent_num = get_viewent_num(demo)
     collection_events = get_collection_events(demo, sounds_precache)
-    statics_by_frame = get_static_collectables_by_frame(demo, models_precache)
+    statics_by_frame = get_static_collectables_by_frame(demo,
+        get_static_collectables(demo, models_precache))
     backpacks_by_frame = get_backpacks_by_frame(demo, models_precache)
     client_positions = get_client_positions(demo, viewent_num)
+    times = demo.get_time()
 
     static_collections = [[] for _ in range(len(demo.blocks))]
     backpack_collections = [[] for _ in range(len(demo.blocks))]
@@ -683,6 +696,7 @@ def get_collections(demo):
         assert distance < 0.5
         assert event.sound_event.sound == closest.type.collect_sound
         closest.sound_event = event.sound_event
+        closest.time_consumed = times[event.block_index]
 
     return static_collections, backpack_collections
 
@@ -701,9 +715,8 @@ def get_first_active_block_index(demo):
                 if m.time > 1.22777784:
                     return i
 
-def get_possible_collections(demo):
-    models_precache, _ = get_precaches(demo)
-    collectables = get_static_collectables(demo, models_precache)
+def get_possible_collections(demo, collectables_static):
+    collectables = get_static_collectables_persistant(demo, collectables_static)
     client_positions = get_client_positions(demo, get_viewent_num(demo))
     first_active_block_index = get_first_active_block_index(demo)
     original_collections = get_static_collections(demo)
@@ -797,18 +810,52 @@ def get_ammo_for_activeweapon(stats: format.ClientStats):
     else:
         raise ValueError("Unknown activeweapon")
 
-def rebuild_stats(new_start: format.ClientStats,
-                  old_stats_list: list[format.ClientStats],
-                  backpack_collections, old_static_collections,
-                  possible_collections, damage, is_coop):
-    assert len(old_stats_list) == len(damage)
+def rebuild_stats(start_stats_per_player: list[format.ClientStats],
+                  demo_per_player: list[format.Demo], is_coop: bool):
+    assert len(start_stats_per_player) == len(demo_per_player)
+    num_players = len(demo_per_player)
+    num_blocks_per_player = [len(demo.blocks) for demo in demo_per_player]
 
-    old_stats_previous = None
-    stats = ClientStatsAccessor(copy.deepcopy(new_start))
-    stats_list = []
-    actual_collections = [[] for _ in range(len(possible_collections))]
+    models_precache, _ = get_precaches(demo_per_player[0])
+    collectables_static = get_static_collectables(demo_per_player[0], models_precache)
 
-    for i, old_stats_data in enumerate(old_stats_list):
+    times_per_player = [d.get_time().tolist() + [math.inf]
+                       for d in demo_per_player]
+    damage_per_player = [get_damage(d) for d in demo_per_player]
+    old_static_collections_per_player = [get_static_collections(d)
+                                        for d in demo_per_player]
+    backpack_collections_per_player = [get_backpack_collections(d)
+                                      for d in demo_per_player]
+    possible_collections_per_player = [get_possible_collections(d, collectables_static)
+                                      for d in demo_per_player]
+
+    i_per_player = [0] * num_players
+    old_stats_list_per_player = [d.get_client_stats() for d in demo_per_player]
+    old_stats_previous_per_player = [None] * num_players
+    stats_per_player = [ClientStatsAccessor(copy.deepcopy(s))
+                       for s in start_stats_per_player]
+    stats_list_per_player = [[] for _ in range(num_players)]
+    actual_collections_per_player = [[[] for _ in range(len(demo.blocks))]
+                                    for demo in demo_per_player]
+
+    while any(i < num_blocks for i, num_blocks in zip(i_per_player, num_blocks_per_player)):
+        time_per_player = [times[i] for i, times in zip(i_per_player, times_per_player)]
+        player_index = time_per_player.index(min(time_per_player))
+
+        time = time_per_player[player_index]
+        damage = damage_per_player[player_index]
+        old_static_collections = old_static_collections_per_player[player_index]
+        backpack_collections = backpack_collections_per_player[player_index]
+        possible_collections = possible_collections_per_player[player_index]
+
+        i = i_per_player[player_index]
+        old_stats_data = old_stats_list_per_player[player_index][i]
+        old_stats_previous = old_stats_previous_per_player[player_index]
+        stats = stats_per_player[player_index]
+        stats_list = stats_list_per_player[player_index]
+        actual_collections = actual_collections_per_player[player_index]
+
+        i_per_player[player_index] += 1
         if not old_stats_data:
             stats_list.append(None)
             continue
@@ -866,7 +913,7 @@ def rebuild_stats(new_start: format.ClientStats,
             assert stats[stat_type] >= stat_type.min
 
         for collectable in possible_collections[i]:
-            if collectable.will_collect(stats, is_coop) and collectable.frame_consumed > i:
+            if collectable.will_collect(stats, is_coop) and collectable.time_consumed > time:
                 picked_up_in_original = any(c.entity_num == collectable.entity_num for c in old_static_collections[i])
                 if collectable.will_collect(old_stats_previous, is_coop) and not picked_up_in_original:
                     # for some reason this collectable wasnt picked up in original demo
@@ -877,7 +924,7 @@ def rebuild_stats(new_start: format.ClientStats,
 
                 actual_collections[i].append(collectable)
                 if collectable.will_disappear(stats, is_coop):
-                    collectable.frame_consumed = i
+                    collectable.time_consumed = time
 
                 stats.items |= collectable.get_pickup_items()
                 for stat_type in (Health, Shells, Nails, Rockets, Cells):
@@ -908,8 +955,12 @@ def rebuild_stats(new_start: format.ClientStats,
         stats.items |= ammo_item_flag
 
         stats_list.append(copy.deepcopy(stats))
-        old_stats_previous = old_stats
-    return stats_list, actual_collections
+        old_stats_previous_per_player[player_index] = old_stats
+
+    for demo, stats_list in zip(demo_per_player, stats_list_per_player):
+        demo.set_client_stats(stats_list)
+
+    return actual_collections_per_player
 
 
 def remove_collection_sound(sound_num: int, viewent_num: int,
@@ -957,24 +1008,20 @@ def remove_entity_after(start_block_index: int, entity_num: int,
                 continue
             block.messages.remove(m)
 
-def fix_collection_events(actual_collections, demo):
-    models_precache, sounds_precache = get_precaches(demo)
-    changeable_collections = get_static_collections(demo)
+def remove_obsolete_collection_events(old_collections, new_collections, demo,
+                                      demo_per_player):
+    models_precache, _ = get_precaches(demo)
     viewent_num = get_viewent_num(demo)
-    client_positions = get_client_positions(demo, viewent_num)
-
-    static_collectables = get_static_collectables(demo, models_precache)
-
+    static_collectables = get_static_collectables_persistant(demo,
+        get_static_collectables(demo, models_precache))
     times = demo.get_time()
+    times_per_player = [d.get_time().tolist() for d in demo_per_player]
+
     blocks_to_remove = []
     for i, block in enumerate(demo.blocks):
-        equal = []
-        for x in changeable_collections[i]:
-            for y in actual_collections[i]:
-                if x.entity_num == y.entity_num:
-                    equal.append(x.entity_num)
-        collections_to_remove = [c for c in changeable_collections[i] if c.entity_num not in equal]
-        collections_to_add = [c for c in actual_collections[i] if c.entity_num not in equal]
+        collections_to_remove = [old for old in old_collections[i]
+                                 if not any(new.entity_num == old.entity_num
+                                            for new in new_collections[i])]
 
         for c in collections_to_remove:
             print(f"removed collection: {c.type} at time {times[i]}")
@@ -991,6 +1038,27 @@ def fix_collection_events(actual_collections, demo):
                 last_origin = static_collectables[c.entity_num].origins[i-1]
             keep_entity_after(i, c.entity_num, last_origin, demo)
 
+            for other_demo, other_times in zip(demo_per_player, times_per_player):
+                if other_demo == demo:
+                    continue
+                other_i = other_times.index(c.time_consumed)
+                remove_collection_sound(c.sound_event.sound_num, viewent_num,
+                                        other_demo.blocks[other_i])
+                keep_entity_after(other_i, c.entity_num, last_origin, other_demo)
+    return blocks_to_remove
+
+def add_new_collection_events(old_collections, new_collections, demo,
+                              demo_per_player):
+    _, sounds_precache = get_precaches(demo)
+    viewent_num = get_viewent_num(demo)
+    client_positions = get_client_positions(demo, viewent_num)
+    times = demo.get_time()
+    times_per_player = [d.get_time().tolist() for d in demo_per_player]
+
+    for i, block in enumerate(demo.blocks):
+        collections_to_add = [new for new in new_collections[i]
+                              if not any(old.entity_num == new.entity_num
+                                         for old in old_collections[i])]
         for c in collections_to_add:
             print(f"added collection: {c.type} at time {times[i]}")
 
@@ -1000,5 +1068,41 @@ def fix_collection_events(actual_collections, demo):
             block.messages.append(messages.StuffTextMessage(text=b'bf\n'))
             remove_entity_after(i, c.entity_num, demo)
 
-    for i in reversed(blocks_to_remove):
-        del demo.blocks[i]
+            for other_demo, other_times in zip(demo_per_player, times_per_player):
+                if other_demo == demo:
+                    continue
+                other_i = other_times.index(c.time_consumed)
+                add_collection_sound(c.type.collect_sound, client_positions[i],
+                                     viewent_num, sounds_precache,
+                                     other_demo.blocks[other_i])
+                remove_entity_after(other_i, c.entity_num, other_demo)
+
+def fix_collection_events(old_collections_per_player,
+                          new_collections_per_player, demo_per_player):
+    assert len(new_collections_per_player) == len(demo_per_player)
+
+    blocks_to_remove_per_player = []
+    for old_collections, new_collections, demo in zip(old_collections_per_player,
+                                                      new_collections_per_player,
+                                                      demo_per_player):
+        blocks_to_remove_per_player.append(
+            remove_obsolete_collection_events(old_collections, new_collections, demo,
+                                              demo_per_player))
+    for old_collections, new_collections, demo in zip(old_collections_per_player,
+                                                      new_collections_per_player,
+                                                      demo_per_player):
+        add_new_collection_events(old_collections, new_collections, demo,
+                                  demo_per_player)
+    for blocks_to_remove, demo in zip(blocks_to_remove_per_player, demo_per_player):
+        for block_index in reversed(blocks_to_remove):
+            del demo.blocks[block_index]
+
+
+def apply_new_start_stats(start_stats_per_player: list[format.ClientStats],
+                          demos_per_player: list[format.Demo], is_coop: bool):
+    old_collections_per_player = [get_static_collections(demo)
+                                  for demo in demos_per_player]
+    new_collections_per_player = rebuild_stats(start_stats_per_player,
+                                               demos_per_player, is_coop)
+    fix_collection_events(old_collections_per_player,
+                          new_collections_per_player, demos_per_player)
