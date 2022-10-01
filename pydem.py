@@ -102,6 +102,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('demos', type=str, nargs='*', help="Path to input demo files.")
     parser.add_argument('--remove_grenade_counter', action='store_true')
+    parser.add_argument('--remove_prints', type=str, action='append',
+                        help="Removes notification prints that contain the given text.")
     parser.add_argument('--stats', action='store_true')
     parser.add_argument('--coop', dest='coop_demos', action='append', type=str, nargs='*',
                         help="Path to corresponding demo files for another player.")
@@ -141,9 +143,11 @@ def main():
         demos = [parse_demo(path) for path in demo_paths]
 
 
-    if args.remove_grenade_counter:
-        for demo in demos:
+    for demo in demos:
+        if args.remove_grenade_counter:
             printing.remove_grenade_counter(demo)
+        if args.remove_prints:
+            printing.remove_prints(demo, args.remove_prints)
 
 
     for path, demo in zip(demo_paths, demos):
