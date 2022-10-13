@@ -101,6 +101,9 @@ def next_spawnparams(stats: format.ClientStats) -> format.ClientStats:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('demos', type=str, nargs='*', help="Path to input demo files.")
+    parser.add_argument('--fix_intermission_lag', action='store_true',
+        help="Fix intermissions that start too late in coop demos due to "
+             "network lag, which can cause a wrong final time to be shown.")
     parser.add_argument('--remove_grenade_counter', action='store_true')
     parser.add_argument('--remove_prints', type=str, action='append',
                         help="Removes notification prints that contain the given text.")
@@ -144,6 +147,8 @@ def main():
 
 
     for demo in demos:
+        if args.fix_intermission_lag:
+            printing.fix_intermission_lag(demo)
         if args.remove_grenade_counter:
             printing.remove_grenade_counter(demo)
         if args.remove_prints:
