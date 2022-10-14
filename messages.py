@@ -11,7 +11,9 @@ class ProtocolVersion(enum.IntEnum):
     RMQ = 999
 
 
-class ProtocolFlags(enum.Flag):
+# this should be (enum.IntFlag), but that has terrible performance with the
+# bitwise and operator. So instead let's use plain int
+class ProtocolFlags:
     PRFL_SHORTANGLE = (1 << 1)
     PRFL_FLOATANGLE = (1 << 2)
     PRFL_24BITCOORD = (1 << 3)
@@ -21,10 +23,10 @@ class ProtocolFlags(enum.Flag):
     PRFL_INT32COORD = (1 << 7)
 
 protocol = ProtocolVersion.NETQUAKE  # TODO
-protocol_flags = ProtocolFlags(0)  # TODO
+protocol_flags = 0  # TODO
 
 
-def read_coord(protocol_flags: ProtocolFlags, stream) -> float:
+def read_coord(protocol_flags: int, stream) -> float:
     if protocol_flags & ProtocolFlags.PRFL_FLOATCOORD:
         return bindata.read_f32(stream)
     elif protocol_flags & ProtocolFlags.PRFL_INT32COORD:
@@ -34,7 +36,7 @@ def read_coord(protocol_flags: ProtocolFlags, stream) -> float:
     else:
         return bindata.read_i16(stream) * (1.0/8.0)
 
-def write_coord(protocol_flags: ProtocolFlags, stream, value: float):
+def write_coord(protocol_flags: int, stream, value: float):
     if protocol_flags & ProtocolFlags.PRFL_FLOATCOORD:
         bindata.write_f32(stream, value)
     elif protocol_flags & ProtocolFlags.PRFL_INT32COORD:
@@ -46,14 +48,14 @@ def write_coord(protocol_flags: ProtocolFlags, stream, value: float):
     else:
         bindata.write_i16(stream, round(value * 8.0))
 
-def read_coord_n(protocol_flags: ProtocolFlags, stream, n: int):
+def read_coord_n(protocol_flags: int, stream, n: int):
     return [read_coord(protocol_flags, stream) for _ in range(n)]
 
-def write_coord_n(protocol_flags: ProtocolFlags, stream, values: list[float]):
+def write_coord_n(protocol_flags: int, stream, values: list[float]):
     for value in values:
         write_coord(protocol_flags, stream, value)
 
-def read_angle(protocol_flags: ProtocolFlags, stream) -> float:
+def read_angle(protocol_flags: int, stream) -> float:
     if protocol_flags & ProtocolFlags.PRFL_FLOATANGLE:
         return bindata.read_f32(stream)
     elif protocol_flags & ProtocolFlags.PRFL_SHORTANGLE:
@@ -61,7 +63,7 @@ def read_angle(protocol_flags: ProtocolFlags, stream) -> float:
     else:
         return bindata.read_i8(stream) * (360.0/256.0)
 
-def write_angle(protocol_flags: ProtocolFlags, stream, value: float):
+def write_angle(protocol_flags: int, stream, value: float):
     if protocol_flags & ProtocolFlags.PRFL_FLOATANGLE:
         bindata.write_f32(stream, value)
     elif protocol_flags & ProtocolFlags.PRFL_SHORTANGLE:
@@ -69,10 +71,10 @@ def write_angle(protocol_flags: ProtocolFlags, stream, value: float):
     else:
         bindata.write_i8(stream, round(value / (360.0/256.0)))
 
-def read_angle_n(protocol_flags: ProtocolFlags, stream, n: int):
+def read_angle_n(protocol_flags: int, stream, n: int):
     return [read_angle(protocol_flags, stream) for _ in range(n)]
 
-def write_angle_n(protocol_flags: ProtocolFlags, stream, values: list[float]):
+def write_angle_n(protocol_flags: int, stream, values: list[float]):
     for value in values:
         write_angle(protocol_flags, stream, value)
 
@@ -298,7 +300,7 @@ class ServerInfoMessage:
     ID = 11
 
     protocol: ProtocolVersion
-    protocol_flags: ProtocolFlags
+    protocol_flags: int
     max_clients: int
     gametype: int
     levelname: str
@@ -327,7 +329,7 @@ class ServerInfoMessage:
         protocol = ProtocolVersion(bindata.read_u32(stream))
         protocol_flags = 0
         if protocol == ProtocolVersion.RMQ:
-            protocol_flags = ProtocolFlags(bindata.read_u32(stream))
+            protocol_flags = bindata.read_u32(stream)
         max_clients = bindata.read_u8(stream)
         gametype = bindata.read_u8(stream)
         levelname = bindata.read_c_str(stream)
@@ -1106,7 +1108,9 @@ MESSAGE_TYPES = [
 MESSAGE_TYPE_FROM_ID = dict(zip([m.ID for m in MESSAGE_TYPES], MESSAGE_TYPES))
 
 
-class UpdateFlags(enum.IntFlag):
+# this should be (enum.IntFlag), but that has terrible performance with the
+# bitwise and operator. So instead let's use plain int
+class UpdateFlags:
     MOREBITS = (1<<0)
     ORIGIN1 = (1<<1)
     ORIGIN2 = (1<<2)
@@ -1137,7 +1141,7 @@ class UpdateFlags(enum.IntFlag):
 
 @dataclasses.dataclass
 class EntityUpdateMessage:
-    flags: UpdateFlags
+    flags: int
     num: int
     modelindex: int
     frame: int
@@ -1211,15 +1215,15 @@ class EntityUpdateMessage:
                 bindata.write_u8(stream, self.frame_finish_time)
 
     @staticmethod
-    def parse(flags: UpdateFlags, stream):
+    def parse(flags: int, stream):
         if flags & UpdateFlags.MOREBITS:
-            flags |= UpdateFlags(bindata.read_u8(stream) << 8)
+            flags |= bindata.read_u8(stream) << 8
 
         if protocol != ProtocolVersion.NETQUAKE:
             if flags & UpdateFlags.EXTEND1:
-                flags |= UpdateFlags(bindata.read_u8(stream) << 16)
+                flags |= bindata.read_u8(stream) << 16
             if flags & UpdateFlags.EXTEND2:
-                flags |= UpdateFlags(bindata.read_u8(stream) << 24)
+                flags |= bindata.read_u8(stream) << 24
 
         num = bindata.read_i16(stream) if (flags & UpdateFlags.LONGENTITY) else bindata.read_u8(stream)
         modelindex = bindata.read_u8(stream) if (flags & UpdateFlags.MODEL) else None  # TODO: default from baseline
@@ -1273,8 +1277,8 @@ def parse_message(stream):
     message_id = bindata.read_u8(stream)
     #if message_id == 0xff:
     #    raise ValueError("end of message")
-    if UpdateFlags(message_id) & UpdateFlags.SIGNAL:
-        return EntityUpdateMessage.parse(UpdateFlags(message_id), stream)
+    if message_id & UpdateFlags.SIGNAL:
+        return EntityUpdateMessage.parse(message_id, stream)
 
     Message = MESSAGE_TYPE_FROM_ID[message_id]
     return Message.parse(stream)
