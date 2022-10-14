@@ -722,6 +722,7 @@ def get_possible_collections(demo, collectables_static, original_collections):
 
     possible_pickups = [[] for _ in range(len(demo.blocks))]
     for i, pos in enumerate(client_positions):
+        current_player_bounds = collision.bounds_player(pos)
         for collectable in collectables.values():
             tolerance = 0.0
             if i < first_active_block_index:
@@ -733,7 +734,7 @@ def get_possible_collections(demo, collectables_static, original_collections):
                 # with a tolerance of 0. Therefore we allow a bit more leeway on
                 # the first frame
                 tolerance = 0.5
-            distance = collision.distance(collision.bounds_player(pos),
+            distance = collision.distance(current_player_bounds,
                                           collectable.bounds(frame=i-1))
 
             orig_collection = [c for c in original_collections[i]
