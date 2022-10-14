@@ -715,11 +715,10 @@ def get_first_active_block_index(demo):
                 if m.time > 1.22777784:
                     return i
 
-def get_possible_collections(demo, collectables_static):
+def get_possible_collections(demo, collectables_static, original_collections):
     collectables = get_static_collectables_persistant(demo, collectables_static)
     client_positions = get_client_positions(demo, get_viewent_num(demo))
     first_active_block_index = get_first_active_block_index(demo)
-    original_collections = get_static_collections(demo)
 
     possible_pickups = [[] for _ in range(len(demo.blocks))]
     for i, pos in enumerate(client_positions):
@@ -811,8 +810,11 @@ def get_ammo_for_activeweapon(stats: format.ClientStats):
         raise ValueError("Unknown activeweapon")
 
 def rebuild_stats(start_stats_per_player: list[format.ClientStats],
-                  demo_per_player: list[format.Demo], is_coop: bool):
+                  demo_per_player: list[format.Demo],
+                  old_static_collections_per_player,
+                  backpack_collections_per_player, is_coop: bool):
     assert len(start_stats_per_player) == len(demo_per_player)
+    assert len(old_static_collections_per_player) == len(demo_per_player)
     num_players = len(demo_per_player)
     num_blocks_per_player = [len(demo.blocks) for demo in demo_per_player]
 
@@ -822,12 +824,10 @@ def rebuild_stats(start_stats_per_player: list[format.ClientStats],
     times_per_player = [d.get_time().tolist() + [math.inf]
                        for d in demo_per_player]
     damage_per_player = [get_damage(d) for d in demo_per_player]
-    old_static_collections_per_player = [get_static_collections(d)
-                                        for d in demo_per_player]
-    backpack_collections_per_player = [get_backpack_collections(d)
-                                      for d in demo_per_player]
-    possible_collections_per_player = [get_possible_collections(d, collectables_static)
-                                      for d in demo_per_player]
+    possible_collections_per_player = [
+        get_possible_collections(d, collectables_static, old_static_collections)
+        for d, old_static_collections in zip(demo_per_player,
+                                             old_static_collections_per_player)]
 
     i_per_player = [0] * num_players
     old_stats_list_per_player = [d.get_client_stats() for d in demo_per_player]
@@ -1095,9 +1095,15 @@ def fix_collection_events(old_collections_per_player,
 
 def apply_new_start_stats(start_stats_per_player: list[format.ClientStats],
                           demos_per_player: list[format.Demo], is_coop: bool):
-    old_collections_per_player = [get_static_collections(demo)
-                                  for demo in demos_per_player]
-    new_collections_per_player = rebuild_stats(start_stats_per_player,
-                                               demos_per_player, is_coop)
-    fix_collection_events(old_collections_per_player,
+    old_static_and_backpack_collections_per_player = [get_collections(d)
+                                                      for d in demos_per_player]
+    old_static_collections_per_player = [
+        x[0] for x in old_static_and_backpack_collections_per_player]
+    backpack_collections_per_player = [
+        x[1] for x in old_static_and_backpack_collections_per_player]
+    new_collections_per_player = rebuild_stats(
+        start_stats_per_player, demos_per_player,
+        old_static_collections_per_player, backpack_collections_per_player,
+        is_coop)
+    fix_collection_events(old_static_collections_per_player,
                           new_collections_per_player, demos_per_player)
