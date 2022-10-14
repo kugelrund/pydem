@@ -5,11 +5,12 @@ import os
 import matplotlib.pyplot as plt
 import numpy
 
-import stats
+import cleanup
 import format
 from messages import ItemFlags
 import printing
 import smoothing
+import stats
 
 
 class MemoryBuffer:
@@ -107,6 +108,13 @@ def main():
     parser.add_argument('--remove_grenade_counter', action='store_true')
     parser.add_argument('--remove_prints', type=str, action='append',
                         help="Removes notification prints that contain the given text.")
+    parser.add_argument('--remove_pauses', action='store_true',
+        help="Remove pauses from demo. Also copies entity updates and "
+             "viewangles from after the pause to throughout the pause to avoid "
+             "jumps due to pauses at the start of a demo.")
+    parser.add_argument('--instant_skin_color', action='store_true',
+        help="Workaround to make player skin color be applied instantly at the "
+             "start of a demo. Especially useful for coop demos.")
     parser.add_argument('--stats', action='store_true')
     parser.add_argument('--coop', dest='coop_demos', action='append', type=str, nargs='*',
                         help="Path to corresponding demo files for another player.")
@@ -153,6 +161,10 @@ def main():
             printing.remove_grenade_counter(demo)
         if args.remove_prints:
             printing.remove_prints(demo, args.remove_prints)
+        if args.remove_pauses:
+            cleanup.remove_pauses(demo)
+        if args.instant_skin_color:
+            cleanup.instant_skin_color(demo)
 
 
     for path, demo in zip(demo_paths, demos):
