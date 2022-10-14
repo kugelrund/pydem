@@ -522,6 +522,37 @@ def get_static_collectables_persistant(demo, collectables_static):
                         collectables_persistant[m.num].origins[i][2] = m.origin[2]
     return collectables_persistant
 
+def get_static_collectables_bounds_per_frame(demo, collectables_static):
+    collectables_default_origins = dict()
+    collectables_bounds = dict()
+    for i, block in enumerate(demo.blocks):
+        for m in block.messages:
+            if isinstance(m, messages.SpawnBaselineMessage):
+                if not m.entity_num in collectables_static:
+                    continue
+                assert not m.entity_num in collectables_bounds
+                collectables_default_origins[m.entity_num] = m.origin
+                bounds = collectables_static[m.entity_num].bounds(m.origin)
+                collectables_bounds[m.entity_num] = [
+                    list(bounds) for _ in range(len(demo.blocks))]
+            elif isinstance(m, messages.EntityUpdateMessage):
+                if not m.num in collectables_bounds:
+                    continue
+                if not m.flags & (messages.UpdateFlags.ORIGIN1|
+                                  messages.UpdateFlags.ORIGIN2|
+                                  messages.UpdateFlags.ORIGIN3):
+                    continue
+                new_origin = collectables_default_origins[m.num]
+                if m.flags & messages.UpdateFlags.ORIGIN1:
+                    new_origin[0] = m.origin[0]
+                if m.flags & messages.UpdateFlags.ORIGIN2:
+                    new_origin[1] = m.origin[1]
+                if m.flags & messages.UpdateFlags.ORIGIN3:
+                    new_origin[2] = m.origin[2]
+                collectables_bounds[m.num][i] = \
+                    collectables_static[m.num].bounds(new_origin)
+    return collectables_bounds
+
 def get_static_collectables_by_frame(demo, collectables_static):
     statics = get_static_collectables_persistant(demo, collectables_static)
     collectables_by_frame = [[] for _ in range(len(demo.blocks))]
@@ -716,14 +747,15 @@ def get_first_active_block_index(demo):
                     return i
 
 def get_possible_collections(demo, collectables_static, original_collections):
-    collectables = get_static_collectables_persistant(demo, collectables_static)
+    collectables_bounds = get_static_collectables_bounds_per_frame(
+        demo, collectables_static)
     client_positions = get_client_positions(demo, get_viewent_num(demo))
     first_active_block_index = get_first_active_block_index(demo)
 
     possible_pickups = [[] for _ in range(len(demo.blocks))]
     for i, pos in enumerate(client_positions):
         current_player_bounds = collision.bounds_player(pos)
-        for collectable in collectables.values():
+        for collectable_num, collectable_bounds in collectables_bounds.items():
             tolerance = 0.0
             if i < first_active_block_index:
                 # do not expect any collection before first active block index
@@ -735,10 +767,10 @@ def get_possible_collections(demo, collectables_static, original_collections):
                 # the first frame
                 tolerance = 0.5
             distance = collision.distance(current_player_bounds,
-                                          collectable.bounds(frame=i-1))
+                                          collectable_bounds[i-1])
 
             orig_collection = [c for c in original_collections[i]
-                if c.entity_num == collectable.collectable.entity_num]
+                               if c.entity_num == collectable_num]
             assert len(orig_collection) <= 1
             is_collected_in_original = len(orig_collection) > 0
             if is_collected_in_original:
@@ -756,7 +788,7 @@ def get_possible_collections(demo, collectables_static, original_collections):
             # those special cases, we also add it, if it was picked up in the
             # original (and we assert distance == 0.0 above for that case).
             if distance < tolerance or is_collected_in_original:
-                possible_pickups[i].append(collectable.collectable)
+                possible_pickups[i].append(collectables_static[collectable_num])
     return possible_pickups
 
 def get_damage(demo):
