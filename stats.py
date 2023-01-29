@@ -808,6 +808,14 @@ def verify_damage_message(damage: messages.DamageMessage, armor: int, reduction:
     else:
         armor_lower_bound, armor_upper_bound = lost_armor_bounds(
             damage_ceiled, armor, reduction)
+        # damage message only stores bytes. So damage more than 256 cannot be
+        # stored in the demo properly. try to fix that by adding 256 to damage
+        # (armor should be unaffected, since 200 is max possible armor)
+        if damage.armor > armor_upper_bound:
+            damage_ceiled += 256
+            damage.blood += 256
+            armor_lower_bound, armor_upper_bound = lost_armor_bounds(
+                damage_ceiled, armor, reduction)
         assert armor_lower_bound <= damage.armor
         assert damage.armor <= armor_upper_bound
         blood_lower_bound = damage_ceiled - armor_upper_bound

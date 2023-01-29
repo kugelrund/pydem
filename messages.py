@@ -688,7 +688,7 @@ class DamageMessage:
     def write(self, stream):
         bindata.write_u8(stream, self.ID)
         bindata.write_u8(stream, self.armor)
-        bindata.write_u8(stream, self.blood)
+        bindata.write_u8(stream, self.blood % 256)
         write_coord_n(protocol_flags, stream, self.from_coords)
 
     @staticmethod
