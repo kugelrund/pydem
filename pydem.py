@@ -125,12 +125,9 @@ def main():
                         for path_per_player in paths_per_player]
 
     if args.stats:
-        demo_previous_per_player = None
-        for demo_path_per_player, demo_per_player in zip(paths_per_player,
-                                                         demos_per_player):
-            if not demo_previous_per_player:
-                demo_previous_per_player = demo_per_player
-                continue
+        demo_previous_per_player = demos_per_player[0]
+        for demo_path_per_player, demo_per_player in zip(paths_per_player[1:],
+                                                         demos_per_player[1:]):
             print("========== Fixing stats for " + ', '.join(demo_path_per_player) + " ==========")
             new_stats_per_player = [spawnparams.nextmap(d.get_final_client_stats())
                                    for d in demo_previous_per_player]
