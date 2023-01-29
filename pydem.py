@@ -111,37 +111,39 @@ def main():
     if args.coop_demos:
         assert args.stats  # TODO: Better error message
 
-    demo_paths = []
-    demos = []
+    # this is a list of size "number of players" where each element is a list of
+    # size len(args.demos) that contains paths to the demos for the
+    # corresponding player
+    foreach_player_paths = [args.demos] + [d for d in args.coop_demos]
+    # this is a list of size len(args.demos) where each element is a list of
+    # size "number of players" that contains the path to the corresponding demo
+    # for each player
+    paths_per_player = list(zip(*foreach_player_paths, strict=True))
+    # this is a list of size len(args.demos) where each element is a list of
+    # size "num players" that contains the corresponding demo for each player
+    demos_per_player = [[parse_demo(path) for path in path_per_player]
+                        for path_per_player in paths_per_player]
 
     if args.stats:
-        demo_paths_per_player = [args.demos]
-        if args.coop_demos:
-            demo_paths_per_player += args.coop_demos
-
         demo_previous_per_player = None
-        for demo_path_per_player in zip(*demo_paths_per_player, strict=True):
+        for demo_path_per_player, demo_per_player in zip(paths_per_player,
+                                                         demos_per_player):
             if not demo_previous_per_player:
-                demo_previous_per_player = [parse_demo(paths[0])
-                                           for paths in demo_paths_per_player]
-                demo_paths.extend(demo_path_per_player)
-                demos.extend(demo_previous_per_player)
+                demo_previous_per_player = demo_per_player
                 continue
             print("========== Fixing stats for " + ', '.join(demo_path_per_player) + " ==========")
-            demo_per_player = [parse_demo(p) for p in demo_path_per_player]
-
             new_stats_per_player = [spawnparams.nextmap(d.get_final_client_stats())
                                    for d in demo_previous_per_player]
             stats.apply_new_start_stats(new_stats_per_player, demo_per_player,
                                         is_coop=args.coop_demos)
-
-            demo_paths.extend(demo_path_per_player)
-            demos.extend(demo_per_player)
             demo_previous_per_player = demo_per_player
-    else:
-        demo_paths = args.demos
-        demos = [parse_demo(path) for path in demo_paths]
 
+    # forget about distinction of belonging to different players, as this is not
+    # important anymore for further operations: i.e. flatten the lists of lists
+    demo_paths = [path for path_per_player in paths_per_player
+                  for path in path_per_player]
+    demos = [demo for demo_per_player in demos_per_player
+             for demo in demo_per_player]
 
     for demo in demos:
         if args.fix_intermission_lag:
