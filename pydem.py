@@ -102,6 +102,8 @@ def main():
              "jumps due to pauses at the start of a demo.")
     parser.add_argument('--remove_prints', type=str, action='append',
         help="Removes notification prints that contain the given text.")
+    parser.add_argument('--remove_sounds', type=str, action='append',
+        help="Removes sounds whose name contains the given text.")
     parser.add_argument('--stats', action='store_true')
     parser.add_argument('--coop', dest='coop_demos', action='append', type=str, nargs='*',
                         help="Path to corresponding demo files for another player.")
@@ -152,6 +154,8 @@ def main():
             cleanup.remove_pauses(demo)
         if args.remove_prints:
             cleanup.remove_prints(demo, args.remove_prints)
+        if args.remove_sounds:
+            cleanup.remove_sounds(demo, args.remove_sounds)
 
 
     for path, demo in zip(demo_paths, demos):
