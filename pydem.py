@@ -1,5 +1,4 @@
 import argparse
-import copy
 import os
 
 import matplotlib.pyplot as plt
@@ -7,9 +6,9 @@ import numpy
 
 import cleanup
 import format
-from messages import ItemFlags
 import printing
 import smoothing
+import spawnparams
 import stats
 
 
@@ -88,17 +87,6 @@ def smooth(demo):
     demo.set_pitch(pitch_smoothed)
 
 
-def next_spawnparams(stats: format.ClientStats) -> format.ClientStats:
-    new_stats = copy.deepcopy(stats)
-    new_stats.items = stats.items & ~(stats.items & (
-        ItemFlags.SUPERHEALTH|ItemFlags.KEY1|ItemFlags.KEY2|
-        ItemFlags.INVISIBILITY|ItemFlags.INVULNERABILITY|ItemFlags.SUIT|
-        ItemFlags.QUAD))
-    new_stats.health = min(max(stats.health, 50), 100)
-    new_stats.shells = max(stats.shells, 25)
-    return new_stats
-
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('demos', type=str, nargs='*', help="Path to input demo files.")
@@ -141,7 +129,7 @@ def main():
             print("========== Fixing stats for " + ', '.join(demo_path_per_player) + " ==========")
             demo_per_player = [parse_demo(p) for p in demo_path_per_player]
 
-            new_stats_per_player = [next_spawnparams(d.get_final_client_stats())
+            new_stats_per_player = [spawnparams.nextmap(d.get_final_client_stats())
                                    for d in demo_previous_per_player]
             stats.apply_new_start_stats(new_stats_per_player, demo_per_player,
                                         is_coop=args.coop_demos)
