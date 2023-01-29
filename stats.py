@@ -473,13 +473,6 @@ class CollectableActiveFrame:
         return self.collectable.bounds(self.origin)
 
 
-def get_precaches(demo):
-    server_info_message = [m for b in demo.blocks for m in b.messages
-                           if isinstance(m, messages.ServerInfoMessage)]
-    assert len(server_info_message) == 1
-    return (server_info_message[0].models_precache,
-            server_info_message[0].sounds_precache)
-
 def get_static_collectables(demo, models_precache):
     collectables_static = dict()
     for block in demo.blocks:
@@ -684,7 +677,7 @@ def get_backpack_contents(collection_text: bytes) -> typing.Iterator:
             yield stat_type(int(match.group(i+1)))
 
 def get_collections(demo):
-    models_precache, sounds_precache = get_precaches(demo)
+    models_precache, sounds_precache = demo.get_precaches()
     viewent_num = get_viewent_num(demo)
     collection_events = get_collection_events(demo, sounds_precache)
     statics_by_frame = get_static_collectables_by_frame(demo,
@@ -851,7 +844,7 @@ def rebuild_stats(start_stats_per_player: list[format.ClientStats],
     num_players = len(demo_per_player)
     num_blocks_per_player = [len(demo.blocks) for demo in demo_per_player]
 
-    models_precache, _ = get_precaches(demo_per_player[0])
+    models_precache, _ = demo_per_player[0].get_precaches()
     collectables_static = get_static_collectables(demo_per_player[0], models_precache)
 
     times_per_player = [d.get_time().tolist() + [math.inf]
@@ -1043,7 +1036,7 @@ def remove_entity_after(start_block_index: int, entity_num: int,
 
 def remove_obsolete_collection_events(old_collections, new_collections, demo,
                                       demo_per_player):
-    models_precache, _ = get_precaches(demo)
+    models_precache, _ = demo.get_precaches()
     viewent_num = get_viewent_num(demo)
     static_collectables = get_static_collectables_persistant(demo,
         get_static_collectables(demo, models_precache))
@@ -1082,7 +1075,7 @@ def remove_obsolete_collection_events(old_collections, new_collections, demo,
 
 def add_new_collection_events(old_collections, new_collections, demo,
                               demo_per_player):
-    _, sounds_precache = get_precaches(demo)
+    _, sounds_precache = demo.get_precaches()
     viewent_num = get_viewent_num(demo)
     client_positions = get_client_positions(demo, viewent_num)
     times = demo.get_time()

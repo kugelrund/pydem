@@ -107,6 +107,13 @@ class Demo:
             blocks.append(Block.parse(stream))
         return Demo(cdtrack, blocks)
 
+    def get_precaches(self):
+        server_info_message = [m for b in self.blocks for m in b.messages
+                            if isinstance(m, messages.ServerInfoMessage)]
+        assert len(server_info_message) == 1
+        return (server_info_message[0].models_precache,
+                server_info_message[0].sounds_precache)
+
     def get_yaw(self):
         yaw = numpy.array([block.viewangles.yaw for block in self.blocks])
         for i in range(1, len(yaw)):
