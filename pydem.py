@@ -104,12 +104,12 @@ def main():
         help="Removes notification prints that contain the given text.")
     parser.add_argument('--remove_sounds', type=str, action='append',
         help="Removes sounds whose name contains the given text.")
+    parser.add_argument('--spawnparams', action='store_true',
+        help="Write .cfg files for spawnparams")
     parser.add_argument('--stats', action='store_true')
     parser.add_argument('--coop', dest='coop_demos', action='append', type=str, nargs='*',
                         help="Path to corresponding demo files for another player.")
     args = parser.parse_args()
-    if args.coop_demos:
-        assert args.stats  # TODO: Better error message
 
     # this is a list of size "number of players" where each element is a list of
     # size len(args.demos) that contains paths to the demos for the
@@ -137,6 +137,12 @@ def main():
             stats.apply_new_start_stats(new_stats_per_player, demo_per_player,
                                         is_coop=args.coop_demos)
             demo_previous_per_player = demo_per_player
+
+    if args.spawnparams:
+        for demo_path_per_player, demo_per_player in zip(paths_per_player,
+                                                         demos_per_player):
+            cfg_path = demo_path_per_player[0].replace('.dem', '_end.cfg')
+            spawnparams.write_cfg(cfg_path, demo_per_player)
 
     # forget about distinction of belonging to different players, as this is not
     # important anymore for further operations: i.e. flatten the lists of lists
