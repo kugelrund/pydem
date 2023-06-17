@@ -3,8 +3,8 @@ import io
 
 import numpy
 
-import bindata
-import messages
+from . import bindata
+from . import messages
 
 
 @dataclasses.dataclass

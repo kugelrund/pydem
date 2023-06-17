@@ -1,7 +1,7 @@
 import re
 
-import format
-import messages
+from . import format
+from . import messages
 
 
 def fix_intermission_lag(demo: format.Demo):

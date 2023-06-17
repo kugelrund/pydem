@@ -2,8 +2,14 @@
 
 Quake demo utilities in Python.
 
+## Installation
+
+```shell
+python -m pip install git+https://github.com/kugelrund/pydem
+```
+
 ## Usage
 
 ```shell
-$ python3 pydem.py --help
+python -m pydem --help
 ```

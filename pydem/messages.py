@@ -2,7 +2,7 @@ import dataclasses
 import enum
 import math
 
-import bindata
+from . import bindata
 
 
 class ProtocolVersion(enum.IntEnum):

@@ -1,10 +1,10 @@
 import argparse
 import os
 
-import cleanup
-import format
-import spawnparams
-import stats
+from . import cleanup
+from . import format
+from . import spawnparams
+from . import stats
 
 
 class MemoryBuffer:
@@ -129,7 +129,3 @@ def main():
     for path, demo in zip(demo_paths, demos):
         with open(os.path.splitext(path)[-2] + '_out.dem', 'wb') as f:
             demo.write(f)
-
-
-if __name__ == "__main__":
-    main()

@@ -1,8 +1,8 @@
 import copy
 
-import format
-from messages import ItemFlags
-import stats
+from . import format
+from . import stats
+from .messages import ItemFlags
 
 
 def nextmap(stats: format.ClientStats) -> format.ClientStats:

@@ -5,10 +5,10 @@ import math
 import re
 import typing
 
-import collision
-import format
-import messages
-from messages import ItemFlags
+from . import collision
+from . import format
+from . import messages
+from .messages import ItemFlags
 
 
 class CollectSound(enum.Enum):
