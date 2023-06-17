@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import numpy
 import scipy.interpolate
 import scipy.optimize
@@ -119,3 +120,37 @@ def smooth(x, y):
 
     assert numpy.all((x+deltax)[:-1] - (x+deltax)[1:] <= 1e-14)
     return numpy.interp(x, x + deltax, y)
+
+
+def smooth_demo(demo):
+    # TODO: some blocks dont have time message and those seem to always repeat
+    # the exact same viewangles. should get rid of those before smoothing and
+    # then assign them properly afterwards
+    time = demo.get_time()
+    yaw = demo.get_yaw()
+    pitch = demo.get_pitch()
+    fixangle_indices = demo.get_fixangle_indices()
+    split_indices = [-1] + fixangle_indices + [len(time)-1]
+
+    yaw_smoothed = numpy.array(yaw)
+    pitch_smoothed = numpy.array(pitch)
+    for i, _ in enumerate(split_indices[:-1]):
+        begin = split_indices[i] + 1
+        end = split_indices[i+1] + 1
+        if begin + 5 > end:
+            continue  # dont smooth very short segments
+        yaw_smoothed[begin:end] = smooth(time[begin:end], yaw[begin:end])
+        pitch_smoothed[begin:end] = smooth(time[begin:end], pitch[begin:end])
+
+    fig = plt.figure()
+    ax = fig.add_subplot(1, 1, 1)
+    ax.plot(time, yaw, '.', markersize=6)
+    ax.plot(time, yaw_smoothed, '.', markersize=3)
+    ax.plot(time, pitch, '.', markersize=6)
+    ax.plot(time, pitch_smoothed, '.', markersize=3)
+    ax.plot(time[fixangle_indices], yaw[fixangle_indices], 'x')
+    ax.plot(time[fixangle_indices], pitch[fixangle_indices], 'x')
+    plt.show()
+
+    demo.set_yaw(yaw_smoothed)
+    demo.set_pitch(pitch_smoothed)
