@@ -107,7 +107,8 @@ def main():
     parser.add_argument('--spawnparams', action='store_true',
         help="Write .cfg files for spawnparams")
     parser.add_argument('--stats', action='store_true')
-    parser.add_argument('--coop', dest='coop_demos', action='append', type=str, nargs='*',
+    parser.add_argument('--coop', dest='coop_demos', action='append', type=str,
+                        nargs='*', default=[],
                         help="Path to corresponding demo files for another player.")
     args = parser.parse_args()
 
