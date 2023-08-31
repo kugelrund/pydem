@@ -951,10 +951,19 @@ def rebuild_stats(start_stats_per_player: list[format.ClientStats],
                 picked_up_in_original = any(c.entity_num == collectable.entity_num for c in old_static_collections[i])
                 if collectable.will_collect(old_stats_previous, is_coop) and not picked_up_in_original:
                     # for some reason this collectable wasnt picked up in original demo
-                    # despite stats indicating that it will be picked up. perhaps
-                    # another coop player already got that collectable or something weird
-                    # is going on like with the nailgun in the trap on e1m3
-                    continue
+                    # despite original stats indicating that it will be picked up.
+                    # This can indeed happen if another coop player already got
+                    # that collectable in the original demos, but now with the
+                    # rebuild stats does not anymore. So in coop we assume that
+                    # we are correct and add the pickup, but outside of coop
+                    # we assume that we are wrong and that something weird is
+                    # going on like with the nailgun in the trap on e1m3
+                    print(f"Warning: unknown why no pickup happened in original at time {time}")
+                    if is_coop:
+                        print(f"Assuming this was due to coop, so adding this pickup as new.")
+                    else:
+                        print(f"Assuming that something weird is going on, so not adding a pickup")
+                        continue
 
                 actual_collections[i].append(collectable)
                 if collectable.will_disappear(stats, is_coop):
