@@ -122,7 +122,7 @@ def smooth(x, y):
     return numpy.interp(x, x + deltax, y)
 
 
-def smooth_demo(demo):
+def smooth_viewangles(demo):
     # TODO: some blocks dont have time message and those seem to always repeat
     # the exact same viewangles. should get rid of those before smoothing and
     # then assign them properly afterwards

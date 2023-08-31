@@ -3,6 +3,7 @@ import os
 
 from . import cleanup
 from . import format
+from . import smoothing
 from . import spawnparams
 from . import stats
 
@@ -66,6 +67,7 @@ def main():
         help="Removes notification prints that contain the given text.")
     parser.add_argument('--remove_sounds', type=str, action='append',
         help="Removes sounds whose name contains the given text.")
+    parser.add_argument('--smooth_viewangles', action='store_true')
     parser.add_argument('--spawnparams', action='store_true',
         help="Write .cfg files for spawnparams")
     parser.add_argument('--stats', action='store_true')
@@ -124,6 +126,8 @@ def main():
             cleanup.remove_prints(demo, args.remove_prints)
         if args.remove_sounds:
             cleanup.remove_sounds(demo, args.remove_sounds)
+        if args.smooth_viewangles:
+            smoothing.smooth_viewangles(demo)
 
 
     for path, demo in zip(demo_paths, demos):
