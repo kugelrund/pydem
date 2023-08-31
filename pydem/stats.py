@@ -535,7 +535,7 @@ def get_static_collectables_bounds_per_frame(demo, collectables_static):
                                   messages.UpdateFlags.ORIGIN2|
                                   messages.UpdateFlags.ORIGIN3):
                     continue
-                new_origin = collectables_default_origins[m.num]
+                new_origin = collectables_default_origins[m.num][:]
                 if m.flags & messages.UpdateFlags.ORIGIN1:
                     new_origin[0] = m.origin[0]
                 if m.flags & messages.UpdateFlags.ORIGIN2:
