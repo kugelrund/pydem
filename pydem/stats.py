@@ -733,11 +733,19 @@ def get_backpack_collections(demo):
     return backpack_collections
 
 def get_first_active_block_index(demo):
+    # Find the first block, from which time is stricly monotonically increasing
+    previous_time = 0.0
+    i_candidate = None
     for i, block in enumerate(demo.blocks):
         for m in block.messages:
             if isinstance(m, messages.TimeMessage):
-                if m.time > 1.22777784:
-                    return i
+                if m.time > previous_time:
+                    if i_candidate is not None:
+                        return i_candidate
+                    i_candidate = i
+                else:
+                    i_candidate = None
+                previous_time = m.time
 
 def get_possible_collections(demo, collectables_static, original_collections):
     collectables_bounds = get_static_collectables_bounds_per_frame(
