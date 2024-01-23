@@ -109,3 +109,20 @@ def remove_sounds(demo: format.Demo, exclude_patterns=list[str]):
             if any(pattern.encode('ascii') in sounds_precache[m.sound_num]
                    for pattern in exclude_patterns):
                 block.messages.remove(m)
+
+
+def cut_intermission(demo: format.Demo, duration: float):
+    times = demo.get_time()
+    time_intermission = None
+    for i, block in enumerate(demo.blocks):
+        if any(isinstance(m, messages.IntermissionMessage) for m in block.messages):
+            time_intermission = times[i]
+            break
+    if not time_intermission:
+        return
+
+    i_first_to_remove = next(
+        (i for (i, t) in enumerate(times) if t > time_intermission + duration),
+        len(demo.blocks))
+    # assuming that last block is disconnect message
+    del demo.blocks[i_first_to_remove:-1]

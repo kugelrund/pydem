@@ -1,4 +1,5 @@
 import argparse
+import math
 import os
 
 from . import cinematic
@@ -53,6 +54,8 @@ def parse_demo(filepath_demo):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('demos', type=str, nargs='*', help="Path to input demo files.")
+    parser.add_argument('--cut_intermission', type=float, default=math.inf,
+        help="Cut intermission down to given duration in seconds.")
     parser.add_argument('--fadein', type=float, default=0.0,
         help="Add fade from black to start of demo with a given duration in seconds")
     parser.add_argument('--fadeout', type=float, default=0.0,
@@ -121,6 +124,8 @@ def main():
     for demo in demos:
         if args.fix_intermission_lag:
             cleanup.fix_intermission_lag(demo)
+        if math.isfinite(args.cut_intermission):
+            cleanup.cut_intermission(demo, args.cut_intermission)
         if args.instant_skin_color:
             cleanup.instant_skin_color(demo)
         if args.remove_grenade_counter:
