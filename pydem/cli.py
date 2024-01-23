@@ -1,6 +1,7 @@
 import argparse
 import os
 
+from . import cinematic
 from . import cleanup
 from . import format
 from . import smoothing
@@ -52,6 +53,10 @@ def parse_demo(filepath_demo):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('demos', type=str, nargs='*', help="Path to input demo files.")
+    parser.add_argument('--fadein', type=float, default=0.0,
+        help="Add fade from black to start of demo with a given duration in seconds")
+    parser.add_argument('--fadeout', type=float, default=0.0,
+        help="Add fade to black to end of demo with a given duration in seconds")
     parser.add_argument('--fix_intermission_lag', action='store_true',
         help="Fix intermissions that start too late in coop demos due to "
              "network lag, which can cause a wrong final time to be shown.")
@@ -128,7 +133,10 @@ def main():
             cleanup.remove_sounds(demo, args.remove_sounds)
         if args.smooth_viewangles:
             smoothing.smooth_viewangles(demo)
-
+        if args.fadein > 0.0:
+            cinematic.fadein(demo, args.fadein)
+        if args.fadeout > 0.0:
+            cinematic.fadeout(demo, args.fadeout)
 
     for path, demo in zip(demo_paths, demos):
         with open(os.path.splitext(path)[-2] + '_out.dem', 'wb') as f:

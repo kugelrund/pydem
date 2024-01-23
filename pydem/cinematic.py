@@ -1,0 +1,33 @@
+import numpy
+
+from . import messages
+
+
+def get_time_messages(block):
+    return [m for m in block.messages if isinstance(m, messages.TimeMessage)]
+
+
+def fade(demo, time_start, duration, backwards):
+    for b in (reversed(demo.blocks) if backwards else demo.blocks):
+        time_messages = get_time_messages(b)
+        if not time_messages:
+            continue
+        time_current = numpy.average([m.time for m in time_messages])
+        time_elapsed = time_start - time_current if backwards else time_current - time_start
+        opacity = min(1.0, 1.0 - (time_elapsed / duration))
+        opacity_byte = int(round(255 * opacity))
+        if opacity_byte <= 0:
+            break
+        b.messages.append(messages.StuffTextMessage(f"v_cshift 0 0 0 {opacity_byte}".encode()))
+
+
+def fadein(demo, duration):
+    time_messages = [m for b in demo.blocks for m in get_time_messages(b)]
+    time_start = min(m.time for m in time_messages)
+    fade(demo, time_start, duration, backwards=False)
+
+
+def fadeout(demo, duration):
+    time_messages = [m for b in demo.blocks for m in get_time_messages(b)]
+    time_end = max(m.time for m in time_messages)
+    fade(demo, time_end, duration, backwards=True)
