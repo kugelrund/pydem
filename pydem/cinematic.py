@@ -23,11 +23,15 @@ def fade(demo, time_start, duration, backwards):
 
 def fadein(demo, duration):
     time_messages = [m for b in demo.blocks for m in get_time_messages(b)]
-    time_start = min(m.time for m in time_messages)
+    time_smallest = min(m.time for m in time_messages)
+    time_second_smallest = min(m.time for m in time_messages if m.time > time_smallest)
+    time_start = time_second_smallest
     fade(demo, time_start, duration, backwards=False)
 
 
 def fadeout(demo, duration):
     time_messages = [m for b in demo.blocks for m in get_time_messages(b)]
-    time_end = max(m.time for m in time_messages)
+    time_largest = max(m.time for m in time_messages)
+    time_second_largest = max(m.time for m in time_messages if m.time < time_largest)
+    time_end = time_second_largest
     fade(demo, time_end, duration, backwards=True)
