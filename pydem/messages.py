@@ -523,7 +523,7 @@ class ClientDataMessage:
         if self.flags & ServerUpdateFlags.VELOCITY3:
             bindata.write_i8(stream, round(self.velocity[2] / 16.0))
 
-        bindata.write_i32(stream, self.items)
+        bindata.write_u32(stream, self.items)
         if self.flags & ServerUpdateFlags.WEAPONFRAME:
             bindata.write_u8(stream, self.weaponframe & 0x00ff)
         if self.flags & ServerUpdateFlags.ARMOR:
@@ -584,7 +584,7 @@ class ClientDataMessage:
         if flags & ServerUpdateFlags.VELOCITY3:
             velocity[2] = bindata.read_i8(stream) * 16
 
-        items = ItemFlags(bindata.read_i32(stream))
+        items = ItemFlags(bindata.read_u32(stream))
         weaponframe = bindata.read_u8(stream) if (flags & ServerUpdateFlags.WEAPONFRAME) else 0
         armor = bindata.read_u8(stream) if (flags & ServerUpdateFlags.ARMOR) else 0
         weapon = bindata.read_u8(stream) if (flags & ServerUpdateFlags.WEAPON) else 0
