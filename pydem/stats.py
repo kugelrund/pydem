@@ -1158,3 +1158,17 @@ def apply_new_start_stats(start_stats_per_player: list[format.ClientStats],
         is_coop)
     fix_collection_events(old_static_collections_per_player,
                           new_collections_per_player, demos_per_player)
+
+
+def add_runes(demo, runes_nums: list[int]):
+    RUNE_NUM_TO_FLAG = {1: ItemFlags.SIGIL1, 2: ItemFlags.SIGIL2,
+                        3: ItemFlags.SIGIL3, 4: ItemFlags.SIGIL4}
+    runes_flags = ItemFlags(0)
+    for rune_num in runes_nums:
+        runes_flags |= RUNE_NUM_TO_FLAG[rune_num]
+
+    for b in demo.blocks:
+        client_messages = [m for m in b.messages
+                           if isinstance(m, messages.ClientDataMessage)]
+        for m in client_messages:
+            m.items |= runes_flags

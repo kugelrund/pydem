@@ -54,6 +54,8 @@ def parse_demo(filepath_demo):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('demos', type=str, nargs='*', help="Path to input demo files.")
+    parser.add_argument('--add_runes', type=str,
+        help="Add runes of the given episode numbers to stats")
     parser.add_argument('--cut_intermission', type=float, default=math.inf,
         help="Cut intermission down to given duration in seconds.")
     parser.add_argument('--fadein', type=float, default=0.0,
@@ -122,6 +124,9 @@ def main():
              for demo in demo_per_player]
 
     for demo in demos:
+        if args.add_runes:
+            rune_strings = (' '.join(args.add_runes.split(','))).split(' ')
+            stats.add_runes(demo, [int(s) for s in rune_strings])
         if args.fix_intermission_lag:
             cleanup.fix_intermission_lag(demo)
         if math.isfinite(args.cut_intermission):
