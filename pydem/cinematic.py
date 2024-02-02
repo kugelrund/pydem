@@ -57,8 +57,10 @@ def merge_pair(demo, demo_other):
             # everything else should line up.
             continue
 
-        ent_msgs = [m for m in demo.blocks[i].messages if isinstance(m, messages.EntityUpdateMessage)]
-        ent_msgs_other = [m for m in demo_other.blocks[i_other].messages if isinstance(m, messages.EntityUpdateMessage)]
+        ent_msgs = [m for m in demo.blocks[i].messages
+                    if isinstance(m, messages.EntityUpdateMessage)]
+        ent_msgs_other = [m for m in demo_other.blocks[i_other].messages
+                          if isinstance(m, messages.EntityUpdateMessage)]
         for msg_other in ent_msgs_other:
             msg = [m for m in ent_msgs if m.num == msg_other.num]
             if msg:
