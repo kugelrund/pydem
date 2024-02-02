@@ -22,7 +22,7 @@ def fade(demo, time_start, duration, backwards):
         opacity_byte = int(round(255 * opacity))
         if opacity_byte <= 0:
             break
-        b.messages.append(messages.StuffTextMessage(f"v_cshift 0 0 0 {opacity_byte}".encode()))
+        b.messages.append(messages.StuffTextMessage(f"v_cshift 0 0 0 {opacity_byte}\n".encode()))
         time_previous = time_current
 
 
