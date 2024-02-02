@@ -18,11 +18,11 @@ def fade(demo, time_start, duration, backwards):
             # do not repeat cshift command if same time
             continue
         time_elapsed = time_start - time_current if backwards else time_current - time_start
-        opacity = min(1.0, 1.0 - (time_elapsed / duration))
+        opacity = numpy.clip(1.0 - (time_elapsed / duration), 0.0, 1.0)
         opacity_byte = int(round(255 * opacity))
+        b.messages.append(messages.StuffTextMessage(f"v_cshift 0 0 0 {opacity_byte}\n".encode()))
         if opacity_byte <= 0:
             break
-        b.messages.append(messages.StuffTextMessage(f"v_cshift 0 0 0 {opacity_byte}\n".encode()))
         time_previous = time_current
 
 
