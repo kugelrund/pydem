@@ -80,6 +80,11 @@ def main():
     parser.add_argument('--smooth_viewangles', action='store_true')
     parser.add_argument('--spawnparams', action='store_true',
         help="Write .cfg files for spawnparams")
+    parser.add_argument('--merge', action='store_true',
+        help="Combine demos from different coop players into one demo, "
+             "to include everything that happens in the PVS of at least one of them. "
+             "Use with --coop. The demos given before the --coop flag are used "
+             "as the base that the others' information is merged into.")
     parser.add_argument('--stats', action='store_true')
     parser.add_argument('--coop', dest='coop_demos', action='append', type=str,
                         nargs='*', default=[],
@@ -116,12 +121,16 @@ def main():
             cfg_path = demo_path_per_player[0].replace('.dem', '_end.cfg')
             spawnparams.write_cfg(cfg_path, demo_per_player)
 
-    # forget about distinction of belonging to different players, as this is not
-    # important anymore for further operations: i.e. flatten the lists of lists
-    demo_paths = [path for path_per_player in paths_per_player
-                  for path in path_per_player]
-    demos = [demo for demo_per_player in demos_per_player
-             for demo in demo_per_player]
+    if args.merge:
+        demo_paths = [path_per_player[0] for path_per_player in paths_per_player]
+        demos = [cinematic.merge(demo_per_player) for demo_per_player in demos_per_player]
+    else:
+        # forget about distinction of belonging to different players, as this is not
+        # important anymore for further operations: i.e. flatten the lists of lists
+        demo_paths = [path for path_per_player in paths_per_player
+                      for path in path_per_player]
+        demos = [demo for demo_per_player in demos_per_player
+                 for demo in demo_per_player]
 
     for demo in demos:
         if args.add_runes:

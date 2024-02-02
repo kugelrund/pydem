@@ -40,3 +40,37 @@ def fadeout(demo, duration):
     time_second_largest = max(m.time for m in time_messages if m.time < time_largest)
     time_end = time_second_largest
     fade(demo, time_end, duration, backwards=True)
+
+
+def merge_pair(demo, demo_other):
+    time = demo.get_time()
+    time_other = demo_other.get_time()
+    i = 0
+    for i_other, _ in enumerate(demo_other.blocks):
+        while time_other[i_other] > time[i]:
+            i += 1
+            if i >= len(demo.blocks):
+                return
+
+        if time[i] != time_other[i_other]:
+            # The starts are usually different between host and client,
+            # everything else should line up.
+            continue
+
+        ent_msgs = [m for m in demo.blocks[i].messages if isinstance(m, messages.EntityUpdateMessage)]
+        ent_msgs_other = [m for m in demo_other.blocks[i_other].messages if isinstance(m, messages.EntityUpdateMessage)]
+        for msg_other in ent_msgs_other:
+            msg = [m for m in ent_msgs if m.num == msg_other.num]
+            if msg:
+                msg, = msg
+                if msg != msg_other:
+                    raise ValueError("Demos to be merged do not match")
+            else:
+                demo.blocks[i].messages.append(msg_other)
+
+
+def merge(demos):
+    demo_base = demos[0]
+    for demo in demos[1:]:
+        merge_pair(demo_base, demo)
+    return demo_base
