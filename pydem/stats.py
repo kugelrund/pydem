@@ -653,6 +653,10 @@ def is_sound_from_client_position(client_origin, sound_origin) -> bool:
     # an entity update and when the sound is created.
     return max_diff < 1.5
 
+def get_previous_block_index_with_time_message(demo, block_index):
+    return block_index - 1 - next(i for i, block in enumerate(reversed(demo.blocks[:block_index]))
+                                  if any(isinstance(m, messages.TimeMessage) for m in block.messages))
+
 def find_closest_collectable_frame_to_client(client_origin,
                                              collectable_active_frames):
     closest_distance = math.inf
@@ -693,7 +697,8 @@ def get_collections(demo):
         assert is_sound_from_client_position(client_origin=client_origin,
                                              sound_origin=event.sound_event.origin)
 
-        statics_candidates = [static for static in statics_by_frame[event.block_index-1]
+        block_index_previous = get_previous_block_index_with_time_message(demo, event.block_index)
+        statics_candidates = [static for static in statics_by_frame[block_index_previous]
                               if static.collectable.type.collect_sound == event.sound_event.sound]
         closest_static, distance_static = find_closest_collectable_frame_to_client(
             client_origin, statics_candidates)
@@ -702,17 +707,17 @@ def get_collections(demo):
         distance_backpack = math.inf
         if event.sound_event.sound == CollectSound.AMMO:
             closest_backpack, distance_backpack = find_closest_collectable_frame_to_client(
-                client_origin, backpacks_by_frame[event.block_index-1])
+                client_origin, backpacks_by_frame[block_index_previous])
 
         if distance_static < distance_backpack:
             assert event.text == closest_static.collectable.type.print_text
-            statics_by_frame[event.block_index-1].remove(closest_static)
+            statics_by_frame[block_index_previous].remove(closest_static)
             distance = distance_static
             closest = closest_static.collectable
             static_collections[event.block_index].append(closest)
         else:
             assert event.text.startswith(b'You get ')
-            backpacks_by_frame[event.block_index-1].remove(closest_backpack)
+            backpacks_by_frame[block_index_previous].remove(closest_backpack)
             distance = distance_backpack
             closest = closest_backpack.collectable
             closest.type.gives = list(get_backpack_contents(event.text))
