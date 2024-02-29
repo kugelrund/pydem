@@ -654,8 +654,9 @@ def is_sound_from_client_position(client_origin, sound_origin) -> bool:
     return max_diff < 2.25
 
 def get_previous_block_index_with_time_message(demo, block_index):
-    return block_index - 1 - next(i for i, block in enumerate(reversed(demo.blocks[:block_index]))
-                                  if any(isinstance(m, messages.TimeMessage) for m in block.messages))
+    offsets = (i for i, block in enumerate(reversed(demo.blocks[:block_index]))
+               if any(isinstance(m, messages.TimeMessage) for m in block.messages))
+    return block_index - 1 - next(offsets, 0)
 
 def find_closest_collectable_frame_to_client(client_origin,
                                              collectable_active_frames):
