@@ -651,7 +651,7 @@ def is_sound_from_client_position(client_origin, sound_origin) -> bool:
     # can't check for equality as this does not seem to be accurate all the time
     # for some reason... Perhaps the client origin can change slightly between
     # an entity update and when the sound is created.
-    return max_diff < 1.5
+    return max_diff < 2.25
 
 def get_previous_block_index_with_time_message(demo, block_index):
     return block_index - 1 - next(i for i, block in enumerate(reversed(demo.blocks[:block_index]))
