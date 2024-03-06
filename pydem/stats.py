@@ -738,20 +738,24 @@ def get_backpack_collections(demo):
     _, backpack_collections = get_collections(demo)
     return backpack_collections
 
+def get_is_paused(demo):
+    is_paused = False
+    for block in demo.blocks:
+        for message in block.messages:
+            if isinstance(message, messages.SetPauseMessage):
+                is_paused = message.paused
+        yield is_paused
+
 def get_first_active_block_index(demo):
     # Find the first block, from which time is stricly monotonically increasing
-    previous_time = 0.0
-    i_candidate = None
-    for i, block in enumerate(demo.blocks):
-        for m in block.messages:
-            if isinstance(m, messages.TimeMessage):
-                if m.time > previous_time:
-                    if i_candidate is not None:
-                        return i_candidate
-                    i_candidate = i
-                else:
-                    i_candidate = None
-                previous_time = m.time
+    indices = [-1] + [i for i, b in enumerate(demo.blocks) for m in b.messages
+                      if isinstance(m, messages.TimeMessage)]
+    times = [0.0] + [m.time for b in demo.blocks for m in b.messages
+                     if isinstance(m, messages.TimeMessage)]
+    is_paused = list(get_is_paused(demo))
+    return next(indices[i+1] for i, _ in enumerate(times)
+                if (times[i+2] > times[i+1] and times[i+1] > times[i])
+                and not is_paused[indices[i+1]])
 
 def get_possible_collections(demo, collectables_static, original_collections):
     collectables_bounds = get_static_collectables_bounds_per_frame(
@@ -763,16 +767,6 @@ def get_possible_collections(demo, collectables_static, original_collections):
     for i, pos in enumerate(client_positions):
         current_player_bounds = collision.bounds_player(pos)
         for collectable_num, collectable_bounds in collectables_bounds.items():
-            tolerance = 0.0
-            if i < first_active_block_index:
-                # do not expect any collection before first active block index
-                tolerance = -math.inf
-            elif i == first_active_block_index:
-                # It seems like client position is not 100% reliable on the
-                # first frame. Instant pickups may therefore not be recognized
-                # with a tolerance of 0. Therefore we allow a bit more leeway on
-                # the first frame
-                tolerance = 0.5
             distance = collision.distance(current_player_bounds,
                                           collectable_bounds[i-1])
 
@@ -781,14 +775,25 @@ def get_possible_collections(demo, collectables_static, original_collections):
             assert len(orig_collection) <= 1
             is_collected_in_original = len(orig_collection) > 0
             if is_collected_in_original:
+                tolerance = 0.0
+                if i <= first_active_block_index:
+                    # It seems like client position is not 100% reliable on the
+                    # first frame. Instant pickups may therefore not be recognized
+                    # with a tolerance of 0. Therefore we allow a bit more leeway on
+                    # the first frame
+                    tolerance = 0.5
                 orig_collection = orig_collection[0]
                 assert distance <= tolerance
                 center = collision.PlayerBounds.center(pos)
-                assert abs(orig_collection.sound_event.origin[0] - center[0]) <= tolerance
-                assert abs(orig_collection.sound_event.origin[1] - center[1]) <= tolerance
-                # z-coordinate does not always seem accurate for some reason
-                assert abs(orig_collection.sound_event.origin[2] - center[2]) < 1.0
+                # sound coordinates are not always accurate, so adding more wiggle room
+                assert abs(orig_collection.sound_event.origin[0] - center[0]) <= max(tolerance, 0.125)
+                assert abs(orig_collection.sound_event.origin[1] - center[1]) <= max(tolerance, 0.0)
+                assert abs(orig_collection.sound_event.origin[2] - center[2]) <= max(tolerance, 0.5)
 
+            tolerance = 0.0
+            if i < first_active_block_index:
+                # do not expect any collection before first active block index
+                tolerance = -math.inf
             # Usually, collections only seem to happen when bounding boxes are
             # strictly overlapping (i.e. distance < 0.0). In some exceptions,
             # touching (i.e. distance == 0.0) can be enough though. To include
