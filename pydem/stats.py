@@ -625,11 +625,15 @@ def get_collection_prints(block: format.Block) -> typing.Iterator[bytes]:
 
 def get_collection_events(demo: format.Demo, sounds_precache: list[str]) -> typing.Iterator[CollectEvent]:
     viewent_num = get_viewent_num(demo)
-    for i, block in enumerate(demo.blocks[:-1]):
-        sounds = get_collection_sounds(block, sounds_precache, viewent_num)
-        prints = get_collection_prints(demo.blocks[i+1])
+    blocks_sounds = [list(get_collection_sounds(block, sounds_precache, viewent_num)) for block in demo.blocks]
+    blocks_prints = [list(get_collection_prints(block)) for block in demo.blocks]
+    indices_sounds = [i for i, sounds in enumerate(blocks_sounds) if sounds]
+    indices_prints = [i for i, prints in enumerate(blocks_prints) if prints]
+    for index_sounds, index_prints in zip(indices_sounds, indices_prints, strict=True):
+        sounds = blocks_sounds[index_sounds]
+        prints = blocks_prints[index_prints]
         for sound, print in zip(sounds, prints, strict=True):
-            yield CollectEvent(i, sound, print)
+            yield CollectEvent(index_sounds, sound, print)
 
 def get_client_positions(demo, client_num):
     client_positions = []
