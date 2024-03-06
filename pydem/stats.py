@@ -890,6 +890,7 @@ def rebuild_stats(start_stats_per_player: list[format.ClientStats],
     stats_list_per_player = [[] for _ in range(num_players)]
     actual_collections_per_player = [[[] for _ in range(len(demo.blocks))]
                                     for demo in demo_per_player]
+    consumed_collectables_in_original = set()
 
     while any(i < num_blocks for i, num_blocks in zip(i_per_player, num_blocks_per_player)):
         time_per_player = [times[i] for i, times in zip(i_per_player, times_per_player)]
@@ -966,23 +967,18 @@ def rebuild_stats(start_stats_per_player: list[format.ClientStats],
             assert stats[stat_type] >= stat_type.min
 
         for collectable in possible_collections[i]:
+            picked_up_in_original = any(c.entity_num == collectable.entity_num for c in old_static_collections[i])
+            if picked_up_in_original and collectable.will_disappear(stats, is_coop):
+                consumed_collectables_in_original.add(collectable.entity_num)
             if collectable.will_collect(stats, is_coop) and collectable.time_consumed > time:
-                picked_up_in_original = any(c.entity_num == collectable.entity_num for c in old_static_collections[i])
-                if collectable.will_collect(old_stats_previous, is_coop) and not picked_up_in_original:
-                    # for some reason this collectable wasnt picked up in original demo
-                    # despite original stats indicating that it will be picked up.
-                    # This can indeed happen if another coop player already got
-                    # that collectable in the original demos, but now with the
-                    # rebuild stats does not anymore. So in coop we assume that
-                    # we are correct and add the pickup, but outside of coop
+                already_consumed_in_original = collectable.entity_num in consumed_collectables_in_original
+                if (collectable.will_collect(old_stats_previous, is_coop)
+                    and not picked_up_in_original and not already_consumed_in_original):
                     # we assume that we are wrong and that something weird is
                     # going on like with the nailgun in the trap on e1m3
                     print(f"Warning: unknown why no pickup happened in original at time {time}")
-                    if is_coop:
-                        print(f"Assuming this was due to coop, so adding this pickup as new.")
-                    else:
-                        print(f"Assuming that something weird is going on, so not adding a pickup")
-                        continue
+                    print("Assuming that something weird is going on, so not adding a pickup")
+                    continue
 
                 actual_collections[i].append(collectable)
                 if collectable.will_disappear(stats, is_coop):
