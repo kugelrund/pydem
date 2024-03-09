@@ -467,6 +467,10 @@ class ItemFlags(enum.IntFlag):
     SIGIL2 = (1<<29)
     SIGIL3 = (1<<30)
     SIGIL4 = (1<<31)
+    # activeweapon is only a byte, so AXE=4096 does not fit and will be cutoff
+    # so for activeweapon, 0 corresponds to AXE. Should only be used for
+    # activeweapon, and only by comparing for exact equality
+    AXE_ACTIVEWEAPON = 0
 
 @dataclasses.dataclass
 class ClientDataMessage:
@@ -594,7 +598,7 @@ class ClientDataMessage:
         nails = bindata.read_u8(stream)
         rockets = bindata.read_u8(stream)
         cells = bindata.read_u8(stream)
-        activeweapon = bindata.read_u8(stream)
+        activeweapon = ItemFlags(bindata.read_u8(stream))
 
         if flags & ServerUpdateFlags.WEAPON2:
             weapon += bindata.read_u8(stream) << 8

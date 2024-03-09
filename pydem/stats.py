@@ -851,7 +851,7 @@ def verify_damage_message(damage: messages.DamageMessage, armor: int, reduction:
         assert damage.blood <= blood_upper_bound
 
 def get_ammo_for_activeweapon(stats: format.ClientStats):
-    if stats.activeweapon == 0:  # axe
+    if stats.activeweapon == ItemFlags.AXE_ACTIVEWEAPON:
         return 0, 0
     elif stats.activeweapon == ItemFlags.SHOTGUN:
         return ItemFlags.SHELLS, stats.shells
@@ -1014,7 +1014,7 @@ def rebuild_stats(start_stats_per_player: list[format.ClientStats],
 
         stats.activeweapon = old_stats.activeweapon  # TODO: set to new_start first. then set to something else if 0 ammo is reached. Also fix which ammo is shown in hud with that
         ammo_item_flag, stats.ammo = get_ammo_for_activeweapon(stats)
-        if ammo_item_flag != 0 and stats.ammo <= 0:
+        if ammo_item_flag != ItemFlags.AXE_ACTIVEWEAPON and stats.ammo <= 0:
             # TODO: switch in the next x frames
             print("Warning: This weapon cannot be active")
         stats.items &= ~(ItemFlags.SHELLS|ItemFlags.NAILS|ItemFlags.ROCKETS|ItemFlags.CELLS)
