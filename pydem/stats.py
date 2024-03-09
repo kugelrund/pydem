@@ -423,15 +423,20 @@ COLLECTABLE_MODELS_MAP = {
 
 @dataclasses.dataclass
 class SoundCollectEvent:
+    block_index: int
     sound_num: int
     origin: list[float]
     sound: CollectSound
 
 @dataclasses.dataclass
-class CollectEvent:
+class PrintCollectEvent:
     block_index: int
-    sound_event: SoundCollectEvent
     text: bytes
+
+@dataclasses.dataclass
+class CollectEvent:
+    sound_event: SoundCollectEvent
+    print_event: PrintCollectEvent
 
 @dataclasses.dataclass
 class Collectable:
@@ -593,47 +598,44 @@ def get_viewent_num(demo):
     assert all([m.viewentity_id == viewent_num for m in set_view_messages])
     return viewent_num
 
-def get_collection_sounds(block: format.Block, sounds_precache: list[str], viewent_num: int) -> typing.Iterator[SoundCollectEvent]:
-    for m in block.messages:
-        if isinstance(m, messages.SoundMessage):
-            sound_name = sounds_precache[m.sound_num]
-            if m.ent == viewent_num and sound_name in COLLECT_SOUNDS:
-                yield SoundCollectEvent(
-                    m.sound_num, m.pos, CollectSound(sound_name))
+def get_collection_sounds(demo: format.Demo, sounds_precache: list[str], viewent_num: int) -> typing.Iterator[SoundCollectEvent]:
+    for block_index, block in enumerate(demo.blocks):
+        for m in block.messages:
+            if isinstance(m, messages.SoundMessage):
+                sound_name = sounds_precache[m.sound_num]
+                if m.ent == viewent_num and sound_name in COLLECT_SOUNDS:
+                    yield SoundCollectEvent(
+                        block_index, m.sound_num, m.pos, CollectSound(sound_name))
 
-def get_collection_prints(block: format.Block) -> typing.Iterator[bytes]:
+def get_collection_prints(demo: format.Demo) -> typing.Iterator[PrintCollectEvent]:
     ignore_items = [b"silver key", b"gold key", b"silver keycard",
                     b"gold keycard", b"silver runekey", b"gold runekey",
                     b"Quad Damage", b"Biosuit", b"Ring of Shadows",
                     b"Pentagram of Protection"]
     ignore_texts = [b"You got the " + x + b"\n" for x in ignore_items]
     text = b""
-    for m in block.messages:
-        if isinstance(m, messages.PrintMessage):
-            if (m.text.startswith(b"You get") or
-                m.text.startswith(b"You got") or
-                m.text.startswith(b"You receive")):
-                assert not text
-                text += m.text
-            elif text:
-                text += m.text
-        elif isinstance(m, messages.StuffTextMessage):
-            if m.text == b"bf\n":
-                if text and not any(x == text for x in ignore_texts):
-                    yield text
-                text = b""
+    for block_index, block in enumerate(demo.blocks):
+        for m in block.messages:
+            if isinstance(m, messages.PrintMessage):
+                if (m.text.startswith(b"You get") or
+                    m.text.startswith(b"You got") or
+                    m.text.startswith(b"You receive")):
+                    assert not text
+                    text += m.text
+                elif text:
+                    text += m.text
+            elif isinstance(m, messages.StuffTextMessage):
+                if m.text == b"bf\n":
+                    if text and not any(x == text for x in ignore_texts):
+                        yield PrintCollectEvent(block_index, text)
+                    text = b""
 
 def get_collection_events(demo: format.Demo, sounds_precache: list[str]) -> typing.Iterator[CollectEvent]:
     viewent_num = get_viewent_num(demo)
-    blocks_sounds = [list(get_collection_sounds(block, sounds_precache, viewent_num)) for block in demo.blocks]
-    blocks_prints = [list(get_collection_prints(block)) for block in demo.blocks]
-    indices_sounds = [i for i, sounds in enumerate(blocks_sounds) if sounds]
-    indices_prints = [i for i, prints in enumerate(blocks_prints) if prints]
-    for index_sounds, index_prints in zip(indices_sounds, indices_prints, strict=True):
-        sounds = blocks_sounds[index_sounds]
-        prints = blocks_prints[index_prints]
-        for sound, print in zip(sounds, prints, strict=True):
-            yield CollectEvent(index_sounds, sound, print)
+    collection_sounds = get_collection_sounds(demo, sounds_precache, viewent_num)
+    collection_prints = get_collection_prints(demo)
+    for collect_sound, collect_print in zip(collection_sounds, collection_prints, strict=True):
+        yield CollectEvent(collect_sound, collect_print)
 
 def get_client_positions(demo, client_num):
     client_positions = []
@@ -698,11 +700,12 @@ def get_collections(demo):
     static_collections = [[] for _ in range(len(demo.blocks))]
     backpack_collections = [[] for _ in range(len(demo.blocks))]
     for event in collection_events:
-        client_origin = client_positions[event.block_index]
+        block_index = event.sound_event.block_index
+        client_origin = client_positions[block_index]
         assert is_sound_from_client_position(client_origin=client_origin,
                                              sound_origin=event.sound_event.origin)
 
-        block_index_previous = get_previous_block_index_with_time_message(demo, event.block_index)
+        block_index_previous = get_previous_block_index_with_time_message(demo, block_index)
         statics_candidates = [static for static in statics_by_frame[block_index_previous]
                               if static.collectable.type.collect_sound == event.sound_event.sound]
         closest_static, distance_static = find_closest_collectable_frame_to_client(
@@ -715,22 +718,22 @@ def get_collections(demo):
                 client_origin, backpacks_by_frame[block_index_previous])
 
         if distance_static < distance_backpack:
-            assert event.text == closest_static.collectable.type.print_text
+            assert event.print_event.text == closest_static.collectable.type.print_text
             statics_by_frame[block_index_previous].remove(closest_static)
             distance = distance_static
             closest = closest_static.collectable
-            static_collections[event.block_index].append(closest)
+            static_collections[block_index].append(closest)
         else:
-            assert event.text.startswith(b'You get ')
+            assert event.print_event.text.startswith(b'You get ')
             backpacks_by_frame[block_index_previous].remove(closest_backpack)
             distance = distance_backpack
             closest = closest_backpack.collectable
-            closest.type.gives = list(get_backpack_contents(event.text))
-            backpack_collections[event.block_index].append(closest)
+            closest.type.gives = list(get_backpack_contents(event.print_event.text))
+            backpack_collections[block_index].append(closest)
         assert distance < 0.5
         assert event.sound_event.sound == closest.type.collect_sound
-        closest.sound_event = event.sound_event
-        closest.time_consumed = times[event.block_index]
+        closest.collect_event = event
+        closest.time_consumed = times[block_index]
 
     return static_collections, backpack_collections
 
@@ -789,10 +792,11 @@ def get_possible_collections(demo, collectables_static, original_collections):
                 orig_collection = orig_collection[0]
                 assert distance <= tolerance
                 center = collision.PlayerBounds.center(pos)
+                sound_event = orig_collection.collect_event.sound_event
                 # sound coordinates are not always accurate, so adding more wiggle room
-                assert abs(orig_collection.sound_event.origin[0] - center[0]) <= max(tolerance, 0.125)
-                assert abs(orig_collection.sound_event.origin[1] - center[1]) <= max(tolerance, 0.0)
-                assert abs(orig_collection.sound_event.origin[2] - center[2]) <= max(tolerance, 0.5)
+                assert abs(sound_event.origin[0] - center[0]) <= max(tolerance, 0.125)
+                assert abs(sound_event.origin[1] - center[1]) <= max(tolerance, 0.0)
+                assert abs(sound_event.origin[2] - center[2]) <= max(tolerance, 0.5)
 
             tolerance = 0.0
             if i < first_active_block_index:
@@ -1033,6 +1037,31 @@ def remove_collection_sound(sound_num: int, viewent_num: int,
     assert len(sounds_to_remove) == 1
     block.messages.remove(sounds_to_remove[0])
 
+def remove_collection_print(print_event: PrintCollectEvent, demo: format.Demo):
+    remaining_text = bytes(print_event.text)
+    block = demo.blocks[print_event.block_index]
+
+    # expect exactly one item pickup fade and no other StuffTextMessage
+    # TODO: Two pickups in one block might be possible? We cannot deal with
+    # that at this time
+    stuff_text_messages = [m for m in block.messages
+                           if isinstance(m, messages.StuffTextMessage)]
+    stuff_text_message, = stuff_text_messages
+    assert stuff_text_message.text == b'bf\n'
+    block.messages.remove(stuff_text_message)
+
+    # make sure that all other messages are PrintMessage and that they belong
+    # exactly to this print_event
+    for m in block.messages:
+        assert isinstance(m, messages.PrintMessage)
+        assert m.text in remaining_text
+        remaining_text = remaining_text.replace(m.text, b'')
+    # and there should not be any other text remaining
+    assert not remaining_text
+
+    # so now we can remove all messages
+    block.messages.clear()
+
 def add_collection_sound(collect_sound: CollectSound, client_pos: list[float],
                          viewent_num: int, sounds_precache: list[str],
                          block: format.Block):
@@ -1088,11 +1117,9 @@ def remove_obsolete_collection_events(old_collections, new_collections, demo,
         for c in collections_to_remove:
             print(f"removed collection: {c.type} at time {times[i]}")
 
-            remove_collection_sound(c.sound_event.sound_num, viewent_num, block)
-
-            # TODO: assert that this really is the info block for this pickup with
-            # pickup message, screenflash and so on
-            demo.blocks[i+1].messages.clear()
+            assert i == c.collect_event.sound_event.block_index
+            remove_collection_sound(c.collect_event.sound_event.sound_num, viewent_num, block)
+            remove_collection_print(c.collect_event.print_event, demo)
 
             last_origin = None
             if (static_collectables[c.entity_num].origins[i-1] !=
@@ -1104,7 +1131,7 @@ def remove_obsolete_collection_events(old_collections, new_collections, demo,
                 if other_demo == demo:
                     continue
                 other_i = other_times.index(c.time_consumed)
-                remove_collection_sound(c.sound_event.sound_num, viewent_num,
+                remove_collection_sound(c.collect_event.sound_event.sound_num, viewent_num,
                                         other_demo.blocks[other_i])
                 keep_entity_after(other_i, c.entity_num, last_origin, other_demo)
     return blocks_to_remove
