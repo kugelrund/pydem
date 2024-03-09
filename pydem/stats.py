@@ -874,6 +874,74 @@ def get_ammo_for_activeweapon(stats: format.ClientStats):
     else:
         raise ValueError("Unknown activeweapon")
 
+def get_weapon_cooldown_for_activeweapon(stats: format.ClientStats):
+    if stats.activeweapon == ItemFlags.AXE_ACTIVEWEAPON:
+        return 0.5
+    if stats.activeweapon == ItemFlags.SHOTGUN:
+        return 0.5
+    if stats.activeweapon == ItemFlags.SUPER_SHOTGUN:
+        return 0.7
+    if stats.activeweapon == ItemFlags.NAILGUN:
+        return 0.2
+    if stats.activeweapon == ItemFlags.SUPER_NAILGUN:
+        return 0.2
+    if stats.activeweapon == ItemFlags.GRENADE_LAUNCHER:
+        return 0.6
+    if stats.activeweapon == ItemFlags.ROCKET_LAUNCHER:
+        return 0.8
+    if stats.activeweapon == ItemFlags.LIGHTNING:
+        return 0.1
+    raise ValueError("Unknown activeweapon")
+
+def get_best_activeweapon(stats: format.ClientStats):
+    if stats.cells >= 1 and stats.items & ItemFlags.LIGHTNING:
+        # TODO: only if waterlevel <= 1
+        return ItemFlags.LIGHTNING
+    if stats.nails >= 2 and stats.items & ItemFlags.SUPER_NAILGUN:
+        return ItemFlags.SUPER_NAILGUN
+    if stats.shells >= 2 and stats.items & ItemFlags.SUPER_SHOTGUN:
+        return ItemFlags.SUPER_SHOTGUN
+    if stats.nails >= 1 and stats.items & ItemFlags.NAILGUN:
+        return ItemFlags.NAILGUN
+    if stats.shells >= 1 and stats.items & ItemFlags.SHOTGUN:
+        return ItemFlags.SHOTGUN
+    return ItemFlags.AXE_ACTIVEWEAPON
+
+class ActiveWeaponManager():
+    def __init__(self, num_players):
+        self.time_switch_required_per_player = [math.inf] * num_players
+
+    def disable_switch_required(self, player_index):
+        self.time_switch_required_per_player[player_index] = math.inf
+
+    def enable_switch_required(self, player_index, stats, time):
+        self.time_switch_required_per_player[player_index] = min(
+            self.time_switch_required_per_player[player_index],
+            time + get_weapon_cooldown_for_activeweapon(stats))
+
+    @staticmethod
+    def get_first_activeweapon(stats):
+        ammo_item_flag, ammo = get_ammo_for_activeweapon(stats)
+        if ammo_item_flag != ItemFlags.AXE_ACTIVEWEAPON and ammo <= 0:
+            start_weapon = get_best_activeweapon(stats)
+            print("no ammo for start-weapon: switching from "
+                  f"{str(stats.activeweapon)} to {str(start_weapon)}")
+            return start_weapon
+        return stats.activeweapon
+
+    def get_activeweapon(self, player_index, stats, time):
+        ammo_item_flag, ammo = get_ammo_for_activeweapon(stats)
+        if ammo_item_flag != ItemFlags.AXE_ACTIVEWEAPON and ammo <= 0:
+            self.enable_switch_required(player_index, stats, time)
+            if time >= self.time_switch_required_per_player[player_index]:
+                next_weapon = get_best_activeweapon(stats)
+                print(f"out of ammo: switching from {str(stats.activeweapon)} "
+                      f"to {str(next_weapon)} at time {time}")
+                return next_weapon
+        else:
+            self.disable_switch_required(player_index)
+        return stats.activeweapon
+
 def rebuild_stats(start_stats_per_player: list[format.ClientStats],
                   demo_per_player: list[format.Demo],
                   old_static_collections_per_player,
@@ -903,6 +971,7 @@ def rebuild_stats(start_stats_per_player: list[format.ClientStats],
     actual_collections_per_player = [[[] for _ in range(len(demo.blocks))]
                                     for demo in demo_per_player]
     consumed_collectables_in_original = set()
+    activeweapon_manager = ActiveWeaponManager(num_players)
 
     while any(i < num_blocks for i, num_blocks in zip(i_per_player, num_blocks_per_player)):
         time_per_player = [times[i] for i, times in zip(i_per_player, times_per_player)]
@@ -1019,11 +1088,14 @@ def rebuild_stats(start_stats_per_player: list[format.ClientStats],
         stats.items |= added_items
         stats.items &= ~removed_items
 
-        stats.activeweapon = old_stats.activeweapon  # TODO: set to new_start first. then set to something else if 0 ammo is reached. Also fix which ammo is shown in hud with that
+        stats.activeweapon = old_stats.activeweapon
+        if not any(stats_list):
+            stats.activeweapon = activeweapon_manager.get_first_activeweapon(stats)
+        else:
+            stats.activeweapon = activeweapon_manager.get_activeweapon(player_index, stats, time)
+        assert stats.items & stats.activeweapon or stats.activeweapon == ItemFlags.AXE_ACTIVEWEAPON
+
         ammo_item_flag, stats.ammo = get_ammo_for_activeweapon(stats)
-        if ammo_item_flag != ItemFlags.AXE_ACTIVEWEAPON and stats.ammo <= 0:
-            # TODO: switch in the next x frames
-            print("Warning: This weapon cannot be active")
         stats.items &= ~(ItemFlags.SHELLS|ItemFlags.NAILS|ItemFlags.ROCKETS|ItemFlags.CELLS)
         stats.items |= ammo_item_flag
 
