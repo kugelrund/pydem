@@ -48,6 +48,7 @@ class Health:
 @dataclasses.dataclass
 class Shells:
     name = 'shells'
+    ammo_item_flag = ItemFlags.SHELLS
     min = MIN_SHELLS
     value: int
     @staticmethod
@@ -57,6 +58,7 @@ class Shells:
 @dataclasses.dataclass
 class Nails:
     name = 'nails'
+    ammo_item_flag = ItemFlags.NAILS
     min = MIN_NAILS
     value: int
     @staticmethod
@@ -66,6 +68,7 @@ class Nails:
 @dataclasses.dataclass
 class Rockets:
     name = 'rockets'
+    ammo_item_flag = ItemFlags.ROCKETS
     min = MIN_ROCKETS
     value: int
     @staticmethod
@@ -75,6 +78,7 @@ class Rockets:
 @dataclasses.dataclass
 class Cells:
     name = 'cells'
+    ammo_item_flag = ItemFlags.CELLS
     min = MIN_CELLS
     value: int
     @staticmethod
@@ -973,6 +977,9 @@ def rebuild_stats(start_stats_per_player: list[format.ClientStats],
             assert lost >= 0
             stats[stat_type] -= lost
             assert stats[stat_type] >= stat_type.min
+            if lost > 0:
+                active_ammo_item_flag, _ = get_ammo_for_activeweapon(old_stats)
+                assert active_ammo_item_flag == stat_type.ammo_item_flag
 
         for collectable in possible_collections[i]:
             picked_up_in_original = any(c.entity_num == collectable.entity_num for c in old_static_collections[i])
