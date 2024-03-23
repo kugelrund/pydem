@@ -111,18 +111,26 @@ def remove_sounds(demo: format.Demo, exclude_patterns=list[str]):
                 block.messages.remove(m)
 
 
-def cut_intermission(demo: format.Demo, duration: float):
+def cut_end_after(demo: format.Demo, duration: float, end_kind: str):
+    if end_kind == 'intermission':
+        message_type = messages.IntermissionMessage
+    elif end_kind == 'finale':
+        message_type = messages.FinaleMessage
+    else:
+        raise ValueError(f"Unsupported kind of end '{end_kind}'")
+
     times = demo.get_time()
-    time_intermission = None
+    time_end = None
     for i, block in enumerate(demo.blocks):
-        if any(isinstance(m, messages.IntermissionMessage) for m in block.messages):
-            time_intermission = times[i]
+        if any(isinstance(m, message_type) for m in block.messages):
+            time_end = times[i]
             break
-    if not time_intermission:
+    if not time_end:
+        print(f"Warning: no {end_kind} found, not cutting anything")
         return
 
     i_first_to_remove = next(
-        (i for (i, t) in enumerate(times) if t > time_intermission + duration),
+        (i for (i, t) in enumerate(times) if t > time_end + duration),
         len(demo.blocks))
     # assuming that last block is disconnect message
     del demo.blocks[i_first_to_remove:-1]
