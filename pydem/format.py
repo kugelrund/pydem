@@ -140,6 +140,11 @@ class Demo:
                 times[i] = previous_time
         return times
 
+    def get_previous_block_index_with_time_message(self, block_index):
+        offsets = (i for i, block in enumerate(reversed(self.blocks[:block_index]))
+                   if any(isinstance(m, messages.TimeMessage) for m in block.messages))
+        return block_index - 1 - next(offsets, 0)
+
     def get_fixangle_indices(self):
         indices = []
         for i, block in enumerate(self.blocks):

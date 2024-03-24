@@ -663,11 +663,6 @@ def is_sound_from_client_position(client_origin, sound_origin) -> bool:
     # an entity update and when the sound is created.
     return max_diff < 2.25
 
-def get_previous_block_index_with_time_message(demo, block_index):
-    offsets = (i for i, block in enumerate(reversed(demo.blocks[:block_index]))
-               if any(isinstance(m, messages.TimeMessage) for m in block.messages))
-    return block_index - 1 - next(offsets, 0)
-
 def find_closest_collectable_frame_to_client(client_origin,
                                              collectable_active_frames):
     closest_distance = math.inf
@@ -709,7 +704,7 @@ def get_collections(demo):
         assert is_sound_from_client_position(client_origin=client_origin,
                                              sound_origin=event.sound_event.origin)
 
-        block_index_previous = get_previous_block_index_with_time_message(demo, block_index)
+        block_index_previous = demo.get_previous_block_index_with_time_message(block_index)
         statics_candidates = [static for static in statics_by_frame[block_index_previous]
                               if static.collectable.type.collect_sound == event.sound_event.sound]
         closest_static, distance_static = find_closest_collectable_frame_to_client(
