@@ -67,6 +67,10 @@ def main():
     parser.add_argument('--fix_intermission_lag', action='store_true',
         help="Fix intermissions that start too late in coop demos due to "
              "network lag, which can cause a wrong final time to be shown.")
+    parser.add_argument('--fix_intermission_transition', action='store_true',
+        help="Fix glaring glitched frame in transition to intermission. As a "
+             "side effect, this also fixes the wrong camera angle during the "
+             "intermission for engines that do not fix it on their own.")
     parser.add_argument('--instant_skin_color', action='store_true',
         help="Workaround to make player skin color be applied instantly at the "
              "start of a demo. Especially useful for coop demos.")
@@ -140,6 +144,8 @@ def main():
             stats.add_runes(demo, [int(s) for s in rune_strings])
         if args.fix_intermission_lag:
             cleanup.fix_intermission_lag(demo)
+        if args.fix_intermission_transition:
+            cleanup.fix_intermission_transition(demo)
         if math.isfinite(args.cut_finale):
             cleanup.cut_end_after(demo, args.cut_finale, 'finale')
         if math.isfinite(args.cut_intermission):

@@ -44,6 +44,30 @@ def fix_intermission_lag(demo: format.Demo):
                 raise ValueError("Could not find correct intermission time")
 
 
+def fix_intermission_transition(demo: format.Demo):
+    reinsert_data = []
+    for i, block in enumerate(demo.blocks):
+        intermission_messages = [m for m in block.messages if
+                                 isinstance(m, messages.IntermissionMessage)]
+        if not intermission_messages:
+            continue
+
+        new_block_index = demo.get_previous_block_index_with_time_message(i)
+        if not any(isinstance(m, messages.SetAngleMessage)
+                   for m in demo.blocks[new_block_index].messages):
+            print("Warning: could not find expected setangle message, "
+                  "not fixing intermission transition")
+            continue
+
+        for m in intermission_messages:
+            block.messages.remove(m)
+        reinsert_data.append((new_block_index, intermission_messages))
+
+    for (i, intermission_messages) in reversed(reinsert_data):
+        demo.blocks.insert(i, format.Block(demo.blocks[i].viewangles,
+                                           intermission_messages))
+
+
 def instant_skin_color(demo: format.Demo):
     for block in demo.blocks:
         for m in [m for m in block.messages
