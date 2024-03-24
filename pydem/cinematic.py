@@ -40,6 +40,10 @@ def fadeout(demo, duration):
     time_second_largest = max(m.time for m in time_messages if m.time < time_largest)
     time_end = time_second_largest
     fade(demo, time_end, duration, backwards=True)
+    # turn off blackscreen at the very end again, so that playing normal demos
+    # afterwards isn't showing a blackscreen throughout. Put it as the first
+    # message to ensure doing it before the disconnect message
+    demo.blocks[-1].messages.insert(0, messages.StuffTextMessage(f"v_cshift 0 0 0 0\n".encode()))
 
 
 def merge_pair(demo, demo_other):
