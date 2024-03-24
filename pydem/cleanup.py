@@ -156,5 +156,7 @@ def cut_end_after(demo: format.Demo, duration: float, end_kind: str):
     i_first_to_remove = next(
         (i for (i, t) in enumerate(times) if t > time_end + duration),
         len(demo.blocks))
+    if i_first_to_remove == len(demo.blocks):
+        print(f"Warning: {end_kind} is shorter than duration to cut to!")
     # assuming that last block is disconnect message
     del demo.blocks[i_first_to_remove:-1]
