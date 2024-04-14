@@ -1,3 +1,5 @@
+import re
+
 import numpy
 
 from . import messages
@@ -44,6 +46,15 @@ def fadeout(demo, duration):
     # afterwards isn't showing a blackscreen throughout. Put it as the first
     # message to ensure doing it before the disconnect message
     demo.blocks[-1].messages.insert(0, messages.StuffTextMessage(f"v_cshift 0 0 0 0\n".encode()))
+
+
+def remove_fades(demo):
+    for block in demo.blocks:
+        stufftext_messages = [m for m in block.messages
+                              if isinstance(m, messages.StuffTextMessage)]
+        for m in stufftext_messages:
+            if re.match(b"v_cshift 0 0 0 [0-9]+\n", m.text):
+                block.messages.remove(m)
 
 
 def merge_pair(demo, demo_other):

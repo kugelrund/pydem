@@ -60,6 +60,8 @@ def main():
         help="Cut finale screen down to given duration in seconds.")
     parser.add_argument('--cut_intermission', type=float, default=math.inf,
         help="Cut intermission down to given duration in seconds.")
+    parser.add_argument('--remove_fades', action='store_true',
+        help="Remove fades from/to black")
     parser.add_argument('--fadein', type=float, default=0.0,
         help="Add fade from black to start of demo with a given duration in seconds")
     parser.add_argument('--fadeout', type=float, default=0.0,
@@ -162,6 +164,8 @@ def main():
             cleanup.remove_sounds(demo, args.remove_sounds)
         if args.smooth_viewangles:
             smoothing.smooth_viewangles(demo)
+        if args.remove_fades:
+            cinematic.remove_fades(demo)
         if args.fadein > 0.0:
             cinematic.fadein(demo, args.fadein)
         if args.fadeout > 0.0:
