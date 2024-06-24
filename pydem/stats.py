@@ -588,13 +588,23 @@ def get_static_collectables_by_frame(demo, collectables_static):
 
 def get_backpacks_by_frame(demo, models_precache):
     backpacks_by_frame = [[] for _ in range(len(demo.blocks))]
+    baselines_origin = dict()
     for i, block in enumerate(demo.blocks):
         for m in block.messages:
+            if isinstance(m, messages.SpawnBaselineMessage):
+                baselines_origin[m.entity_num] = m.origin
             if isinstance(m, messages.EntityUpdateMessage):
                 if m.modelindex and models_precache[m.modelindex] == b'progs/backpack.mdl':
+                    origin = baselines_origin.get(m.num, [0, 0, 0])[:]
+                    if m.flags & messages.UpdateFlags.ORIGIN1:
+                        origin[0] = m.origin[0]
+                    if m.flags & messages.UpdateFlags.ORIGIN2:
+                        origin[1] = m.origin[1]
+                    if m.flags & messages.UpdateFlags.ORIGIN3:
+                        origin[2] = m.origin[2]
                     backpacks_by_frame[i].append(CollectableActiveFrame(
                         Collectable(m.num, CollectableBackpack, None, math.inf),
-                        m.origin))
+                        origin))
     return backpacks_by_frame
 
 def get_viewent_num(demo):
