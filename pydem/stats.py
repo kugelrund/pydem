@@ -934,8 +934,10 @@ def get_best_activeweapon(stats: format.ClientStats):
 class ActiveWeaponManager():
     def __init__(self, num_players):
         self.time_switch_required_per_player = [math.inf] * num_players
+        self.printed = [False] * num_players
 
     def disable_switch_required(self, player_index):
+        self.printed[player_index] = False
         self.time_switch_required_per_player[player_index] = math.inf
 
     def enable_switch_required(self, player_index, stats, time):
@@ -959,8 +961,10 @@ class ActiveWeaponManager():
             self.enable_switch_required(player_index, stats, time)
             if time >= self.time_switch_required_per_player[player_index]:
                 next_weapon = get_best_activeweapon(stats)
-                print(f"out of ammo: switching from {str(stats.activeweapon)} "
-                      f"to {str(next_weapon)} at time {time}")
+                if not self.printed[player_index]:
+                    self.printed[player_index] = True
+                    print(f"out of ammo: switching from {str(stats.activeweapon)} "
+                          f"to {str(next_weapon)} at time {time}")
                 return next_weapon
         else:
             self.disable_switch_required(player_index)
