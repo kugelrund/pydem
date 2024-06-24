@@ -108,6 +108,9 @@ class ClientStatsAccessor(format.ClientStats):
 
 def get_damage_reduction(items: ItemFlags) -> float:
     damage_reduction = 0.0
+    assert (bool(items & ItemFlags.ARMOR1) +
+            bool(items & ItemFlags.ARMOR2) +
+            bool(items & ItemFlags.ARMOR3)) <= 1
     if items & ItemFlags.ARMOR1:
         damage_reduction = 0.3
     elif items & ItemFlags.ARMOR2:
@@ -1063,6 +1066,10 @@ def rebuild_stats(start_stats_per_player: list[format.ClientStats],
                 if collectable.will_disappear(stats, is_coop):
                     collectable.time_consumed = time
 
+                if collectable.get_pickup_items() & (ItemFlags.ARMOR1|ItemFlags.ARMOR2|ItemFlags.ARMOR3):
+                    # make sure to reset previous armor flags, otherwise we
+                    # might end up with two armor flags at once, which is invalid
+                    stats.items &= ~(ItemFlags.ARMOR1|ItemFlags.ARMOR2|ItemFlags.ARMOR3)
                 stats.items |= collectable.get_pickup_items()
                 for stat_type in (Health, Shells, Nails, Rockets, Cells):
                     collected_value = collectable.get_pickup(stat_type)
