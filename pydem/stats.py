@@ -505,6 +505,12 @@ def get_static_collectables(demo, models_precache):
                         collectable_type = COLLECTABLE_MODELS_MAP[model_name]
                     collectables_static[m.entity_num] = Collectable(
                         m.entity_num, collectable_type, None, math.inf)
+            if isinstance(m, messages.EntityUpdateMessage):
+                if m.flags & messages.UpdateFlags.MODEL:
+                    # make sure that entities don't suddenly become a
+                    # collectable through an EntityUpdateMessage; the code does
+                    # not expect that, so it is not able to handle it.
+                    assert models_precache[m.modelindex] not in COLLECTABLE_MODELS_MAP.keys()
     return collectables_static
 
 def get_static_collectables_persistant(demo, collectables_static):
@@ -525,6 +531,11 @@ def get_static_collectables_persistant(demo, collectables_static):
                         collectables_persistant[m.num].origins[i][1] = m.origin[1]
                     if m.flags & messages.UpdateFlags.ORIGIN3:
                         collectables_persistant[m.num].origins[i][2] = m.origin[2]
+                    if m.flags & messages.UpdateFlags.MODEL:
+                        # somehow this entity turned into not being a collectable
+                        # anymore, so make sure it cannot be picked up by a player
+                        # anymore by putting it into the NaN void
+                        collectables_persistant[m.num].origins[i] = [math.nan] * 3
     return collectables_persistant
 
 def get_static_collectables_bounds_per_frame(demo, collectables_static):
@@ -554,6 +565,11 @@ def get_static_collectables_bounds_per_frame(demo, collectables_static):
                     new_origin[1] = m.origin[1]
                 if m.flags & messages.UpdateFlags.ORIGIN3:
                     new_origin[2] = m.origin[2]
+                if m.flags & messages.UpdateFlags.MODEL:
+                    # somehow this entity turned into not being a collectable
+                    # anymore, so make sure it cannot be picked up by a player
+                    # anymore by putting it into the NaN void
+                    new_origin = [math.nan] * 3
                 collectables_bounds[m.num][i] = \
                     collectables_static[m.num].bounds(new_origin)
     return collectables_bounds
