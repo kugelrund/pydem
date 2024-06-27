@@ -87,6 +87,8 @@ class ClientStats:
     cells: int
     activeweapon: int
     ammo: int
+    weaponmodel: int
+    weaponframe: int
 
 @dataclasses.dataclass
 class Demo:
@@ -171,6 +173,8 @@ class Demo:
                     clientdata_messages[0].cells,
                     clientdata_messages[0].activeweapon,
                     clientdata_messages[0].ammo,
+                    clientdata_messages[0].weapon,
+                    clientdata_messages[0].weaponframe
                     ))
             else:
                 client_stats.append(None)
@@ -193,6 +197,8 @@ class Demo:
                 m.cells = client_stats.cells
                 m.activeweapon = client_stats.activeweapon
                 m.ammo = client_stats.ammo
+                m.weapon = client_stats.weaponmodel
+                m.weaponframe = client_stats.weaponframe
 
     def set_yaw(self, yaw):
         for i, block in enumerate(self.blocks):

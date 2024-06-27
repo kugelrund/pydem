@@ -99,7 +99,8 @@ class ClientStatsAccessor(format.ClientStats):
     def __init__(self, data: format.ClientStats):
         super().__init__(data.items, data.health, data.armor, data.shells,
                          data.nails, data.rockets, data.cells,
-                         data.activeweapon, data.ammo)
+                         data.activeweapon, data.ammo, data.weaponmodel,
+                         data.weaponframe)
     def __getitem__(self, stat_type):
         return getattr(self, stat_type.name)
     def __setitem__(self, stat_type, value):
@@ -917,6 +918,25 @@ def get_weapon_cooldown_for_activeweapon(stats: format.ClientStats):
         return 0.1
     raise ValueError("Unknown activeweapon")
 
+def get_weaponmodel_for_activeweapon(stats: format.ClientStats):
+    if stats.activeweapon == ItemFlags.AXE_ACTIVEWEAPON:
+        return b"progs/v_axe.mdl"
+    if stats.activeweapon == ItemFlags.SHOTGUN:
+        return b"progs/v_shot.mdl"
+    if stats.activeweapon == ItemFlags.SUPER_SHOTGUN:
+        return b"progs/v_shot2.mdl"
+    if stats.activeweapon == ItemFlags.NAILGUN:
+        return b"progs/v_nail.mdl"
+    if stats.activeweapon == ItemFlags.SUPER_NAILGUN:
+        return b"progs/v_nail2.mdl"
+    if stats.activeweapon == ItemFlags.GRENADE_LAUNCHER:
+        return b"progs/v_rock.mdl"
+    if stats.activeweapon == ItemFlags.ROCKET_LAUNCHER:
+        return b"progs/v_rock2.mdl"
+    if stats.activeweapon == ItemFlags.LIGHTNING:
+        return b"progs/v_light.mdl"
+    raise ValueError("Unknown activeweapon")
+
 def get_best_activeweapon(stats: format.ClientStats):
     if stats.cells >= 1 and stats.items & ItemFlags.LIGHTNING:
         # TODO: only if waterlevel <= 1
@@ -941,9 +961,10 @@ class ActiveWeaponManager():
         self.time_switch_required_per_player[player_index] = math.inf
 
     def enable_switch_required(self, player_index, stats, time):
+        offset = 0.1 + 1.0/72.0  # TODO: not sure why needed or if even correct
         self.time_switch_required_per_player[player_index] = min(
             self.time_switch_required_per_player[player_index],
-            time + get_weapon_cooldown_for_activeweapon(stats))
+            time + get_weapon_cooldown_for_activeweapon(stats) + offset)
 
     @staticmethod
     def get_first_activeweapon(stats):
@@ -955,11 +976,14 @@ class ActiveWeaponManager():
             return start_weapon
         return stats.activeweapon
 
-    def get_activeweapon(self, player_index, stats, time):
+    def get_activeweapon(self, player_index, stats, old_stats, time):
         ammo_item_flag, ammo = get_ammo_for_activeweapon(stats)
+        _, ammo_old = get_ammo_for_activeweapon(old_stats)
         if ammo_item_flag != ItemFlags.AXE_ACTIVEWEAPON and ammo <= 0:
             self.enable_switch_required(player_index, stats, time)
             if time >= self.time_switch_required_per_player[player_index]:
+                assert ammo_old > 0
+                assert stats.weaponframe == 0
                 next_weapon = get_best_activeweapon(stats)
                 if not self.printed[player_index]:
                     self.printed[player_index] = True
@@ -1120,11 +1144,14 @@ def rebuild_stats(start_stats_per_player: list[format.ClientStats],
         stats.items |= added_items
         stats.items &= ~removed_items
 
+        stats.weaponframe = old_stats.weaponframe
         stats.activeweapon = old_stats.activeweapon
         if not any(stats_list):
             stats.activeweapon = activeweapon_manager.get_first_activeweapon(stats)
         else:
-            stats.activeweapon = activeweapon_manager.get_activeweapon(player_index, stats, time)
+            stats.activeweapon = activeweapon_manager.get_activeweapon(player_index, stats, old_stats, time)
+        stats.weaponmodel = models_precache.index(get_weaponmodel_for_activeweapon(stats))
+        assert (stats.weaponmodel == old_stats.weaponmodel) == (stats.activeweapon == old_stats.activeweapon)
         assert stats.items & stats.activeweapon or stats.activeweapon == ItemFlags.AXE_ACTIVEWEAPON
 
         ammo_item_flag, stats.ammo = get_ammo_for_activeweapon(stats)
