@@ -720,6 +720,7 @@ class BaselineFlags(enum.IntFlag):
     SCALE = (1<<3)
 
 
+@dataclasses.dataclass
 class SpawnStaticMessage:
     ID = 20
 
