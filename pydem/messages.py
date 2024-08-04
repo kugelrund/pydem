@@ -713,7 +713,13 @@ class DamageMessage:
             from_coords=read_coord_n(protocol.flags, stream, 3))
 
 
-@dataclasses.dataclass
+class BaselineFlags(enum.IntFlag):
+    LARGEMODEL = (1<<0)
+    LARGEFRAME = (1<<1)
+    ALPHA = (1<<2)
+    SCALE = (1<<3)
+
+
 class SpawnStaticMessage:
     ID = 20
 
@@ -742,6 +748,84 @@ class SpawnStaticMessage:
             skin=bindata.read_u8(stream),
             origin=read_coord_n(protocol.flags, stream, 3),
             angles=read_angle_n(protocol.flags, stream, 3))
+
+
+@dataclasses.dataclass
+class SpawnStatic2Message:
+    ID = 43
+
+    flags: BaselineFlags
+    modelindex: int
+    frame: int
+    colormap: int
+    skin: int
+    origin: list[float]
+    angles: list[float]
+    alpha: int | None
+    scale: int | None
+
+    def write(self, stream, protocol: Protocol):
+        bindata.write_u8(stream, self.ID)
+        bindata.write_u8(stream, self.flags)
+
+        if self.flags & BaselineFlags.LARGEMODEL:
+            bindata.write_i16(stream, self.modelindex)
+        else:
+            bindata.write_u8(stream, self.modelindex)
+
+        if self.flags & BaselineFlags.LARGEFRAME:
+            bindata.write_i16(stream, self.frame)
+        else:
+            bindata.write_u8(stream, self.frame)
+        bindata.write_u8(stream, self.colormap)
+        bindata.write_u8(stream, self.skin)
+        write_coord_n(protocol.flags, stream, self.origin)
+        write_angle_n(protocol.flags, stream, self.angles)
+        if self.flags & BaselineFlags.ALPHA:
+            bindata.write_u8(stream, self.alpha)
+        if self.flags & BaselineFlags.SCALE:
+            bindata.write_u8(stream, self.scale)
+
+    @staticmethod
+    def parse(stream, protocol: Protocol):
+        flags = BaselineFlags(bindata.read_u8(stream))
+
+        if flags & BaselineFlags.LARGEMODEL:
+            modelindex = bindata.read_i16(stream)
+        else:
+            modelindex = bindata.read_u8(stream)
+
+        if flags & BaselineFlags.LARGEFRAME:
+            frame = bindata.read_i16(stream)
+        else:
+            frame = bindata.read_u8(stream)
+
+        colormap = bindata.read_u8(stream)
+        skin = bindata.read_u8(stream)
+        origin = read_coord_n(protocol.flags, stream, 3)
+        angles = read_angle_n(protocol.flags, stream, 3)
+
+        if flags & BaselineFlags.ALPHA:
+            alpha = bindata.read_u8(stream)
+        else:
+            alpha = None
+
+        if flags & BaselineFlags.SCALE:
+            scale = bindata.read_u8(stream)
+        else:
+            scale = None
+
+        return SpawnStatic2Message(
+            flags=flags,
+            modelindex=modelindex,
+            frame=frame,
+            colormap=colormap,
+            skin=skin,
+            origin=origin,
+            angles=angles,
+            alpha=alpha,
+            scale=scale
+        )
 
 
 @dataclasses.dataclass
@@ -781,6 +865,80 @@ class SpawnBaselineMessage:
             angles[i] = read_angle(protocol.flags, stream)
         return SpawnBaselineMessage(entity_num, modelindex, frame, colormap,
             skin, origin, angles)
+
+
+@dataclasses.dataclass
+class SpawnBaseline2Message:
+    ID = 42
+
+    entity_num: int
+    flags: BaselineFlags
+    modelindex: int
+    frame: int
+    colormap: int
+    skin: int
+    origin: list[float]
+    angles: list[float]
+    alpha: int | None
+    scale: int | None
+
+    def write(self, stream, protocol: Protocol):
+        bindata.write_u8(stream, self.ID)
+        bindata.write_i16(stream, self.entity_num)
+        bindata.write_u8(stream, self.flags)
+        if self.flags & BaselineFlags.LARGEMODEL:
+            bindata.write_i16(stream, self.modelindex)
+        else:
+            bindata.write_u8(stream, self.modelindex)
+
+        if self.flags & BaselineFlags.LARGEFRAME:
+            bindata.write_i16(stream, self.frame)
+        else:
+            bindata.write_u8(stream, self.frame)
+        bindata.write_u8(stream, self.colormap)
+        bindata.write_u8(stream, self.skin)
+        for i in range(3):
+            write_coord(protocol.flags, stream, self.origin[i])
+            write_angle(protocol.flags, stream, self.angles[i])
+        if self.flags & BaselineFlags.ALPHA:
+            bindata.write_u8(stream, self.alpha)
+        if self.flags & BaselineFlags.SCALE:
+            bindata.write_u8(stream, self.scale)
+
+    @staticmethod
+    def parse(stream, protocol: Protocol):
+        entity_num = bindata.read_i16(stream)
+        flags = BaselineFlags(bindata.read_u8(stream))
+        if flags & BaselineFlags.LARGEMODEL:
+            modelindex = bindata.read_i16(stream)
+        else:
+            modelindex = bindata.read_u8(stream)
+
+        if flags & BaselineFlags.LARGEFRAME:
+            frame = bindata.read_i16(stream)
+        else:
+            frame = bindata.read_u8(stream)
+
+        colormap = bindata.read_u8(stream)
+        skin = bindata.read_u8(stream)
+        origin = [None, None, None]
+        angles = [None, None, None]
+        for i in range(3):
+            origin[i] = read_coord(protocol.flags, stream)
+            angles[i] = read_angle(protocol.flags, stream)
+
+        if flags & BaselineFlags.ALPHA:
+            alpha = bindata.read_u8(stream)
+        else:
+            alpha = None
+
+        if flags & BaselineFlags.SCALE:
+            scale = bindata.read_u8(stream)
+        else:
+            scale = None
+
+        return SpawnBaseline2Message(entity_num, flags, modelindex, frame,
+            colormap, skin, origin, angles, alpha, scale)
 
 
 class TempEntityType(enum.IntEnum):
@@ -990,6 +1148,7 @@ class FoundSecretMessage:
 @dataclasses.dataclass
 class SpawnStaticSoundMessage:
     ID = 29
+    VERSION = 1
 
     origin: list[float]
     sound_num: int
@@ -999,16 +1158,31 @@ class SpawnStaticSoundMessage:
     def write(self, stream, protocol: Protocol):
         bindata.write_u8(stream, self.ID)
         write_coord_n(protocol.flags, stream, self.origin)
-        bindata.write_u8(stream, self.sound_num)
+        if self.VERSION == 1:
+            bindata.write_u8(stream, self.sound_num)
+        else:
+            bindata.write_i16(stream, self.sound_num)
         bindata.write_u8(stream, self.volume)
         bindata.write_u8(stream, self.attenuation)
 
-    @staticmethod
-    def parse(stream, protocol: Protocol):
-        return SpawnStaticSoundMessage(
-            origin=read_coord_n(protocol.flags, stream, 3),
-            sound_num=bindata.read_u8(stream), volume=bindata.read_u8(stream),
+    @classmethod
+    def parse(cls, stream, protocol: Protocol):
+        origin = read_coord_n(protocol.flags, stream, 3)
+
+        if cls.VERSION == 1:
+            sound_num = bindata.read_u8(stream)
+        else:
+            sound_num = bindata.read_i16(stream)
+
+        return cls(
+            origin=origin, sound_num=sound_num, volume=bindata.read_u8(stream),
             attenuation=bindata.read_u8(stream))
+
+
+@dataclasses.dataclass
+class SpawnStaticSound2Message(SpawnStaticSoundMessage):
+    ID = 44
+    VERSION = 2
 
 
 @dataclasses.dataclass
@@ -1118,6 +1292,9 @@ MESSAGE_TYPES = [
     CdTrackMessage,
     SellscreenMessage,
     CutsceneMessage,
+    SpawnStatic2Message,
+    SpawnStaticSound2Message,
+    SpawnBaseline2Message,
 ]
 
 MESSAGE_TYPE_FROM_ID = dict(zip([m.ID for m in MESSAGE_TYPES], MESSAGE_TYPES))
