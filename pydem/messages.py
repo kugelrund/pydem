@@ -22,8 +22,27 @@ class ProtocolFlags:
     PRFL_ALPHASANITY = (1 << 6)
     PRFL_INT32COORD = (1 << 7)
 
-protocol = ProtocolVersion.NETQUAKE  # TODO
-protocol_flags = 0  # TODO
+
+@dataclasses.dataclass
+class Protocol:
+    version: ProtocolVersion
+    flags: int = 0
+
+    def __post_init__(self):
+        if self.version != ProtocolVersion.RMQ and self.flags != 0:
+            raise ValueError("Protocol flags are only supported for protocol "
+                             "version RMQ (999)!")
+
+    def write(self, stream):
+        bindata.write_u32(stream, self.version)
+        if self.version == ProtocolVersion.RMQ:
+            bindata.write_u32(stream, self.flags)
+
+    def parse(self, stream):
+        self.version = ProtocolVersion(bindata.read_u32(stream))
+        self.flags = 0
+        if self.version == ProtocolVersion.RMQ:
+            self.flags = bindata.read_u32(stream)
 
 
 def read_coord(protocol_flags: int, stream) -> float:
@@ -83,11 +102,11 @@ def write_angle_n(protocol_flags: int, stream, values: list[float]):
 class BadMessage:
     ID = 0
 
-    def write(self, stream):
+    def write(self, stream, protocol: Protocol):
         bindata.write_u8(stream, self.ID)
 
     @staticmethod
-    def parse(stream):
+    def parse(stream, protocol: Protocol):
         return BadMessage()
 
 
@@ -95,11 +114,11 @@ class BadMessage:
 class NopMessage:
     ID = 1
 
-    def write(self, stream):
+    def write(self, stream, protocol: Protocol):
         bindata.write_u8(stream, self.ID)
 
     @staticmethod
-    def parse(stream):
+    def parse(stream, protocol: Protocol):
         return NopMessage()
 
 
@@ -107,11 +126,11 @@ class NopMessage:
 class DisconnectMessage:
     ID = 2
 
-    def write(self, stream):
+    def write(self, stream, protocol: Protocol):
         bindata.write_u8(stream, self.ID)
 
     @staticmethod
-    def parse(stream):
+    def parse(stream, protocol: Protocol):
         return DisconnectMessage()
 
 
@@ -122,13 +141,13 @@ class UpdateStatMessage:
     stat_id: int
     stat_value: int
 
-    def write(self, stream):
+    def write(self, stream, protocol: Protocol):
         bindata.write_u8(stream, self.ID)
         bindata.write_u8(stream, self.stat_id)
         bindata.write_i32(stream, self.stat_value)
 
     @staticmethod
-    def parse(stream):
+    def parse(stream, protocol: Protocol):
         stat_id = bindata.read_u8(stream)
         stat_value = bindata.read_i32(stream)
         return UpdateStatMessage(stat_id, stat_value)
@@ -140,12 +159,12 @@ class VersionMessage:
 
     protocol: int
 
-    def write(self, stream):
+    def write(self, stream, protocol: Protocol):
         bindata.write_u8(stream, self.ID)
         bindata.write_i32(stream, self.protocol)
 
     @staticmethod
-    def parse(stream):
+    def parse(stream, protocol: Protocol):
         return VersionMessage(protocol=bindata.read_i32(stream))
 
 
@@ -155,12 +174,12 @@ class SetViewMessage:
 
     viewentity_id: int
 
-    def write(self, stream):
+    def write(self, stream, protocol: Protocol):
         bindata.write_u8(stream, self.ID)
         bindata.write_i16(stream, self.viewentity_id)
 
     @staticmethod
-    def parse(stream):
+    def parse(stream, protocol: Protocol):
         return SetViewMessage(viewentity_id=bindata.read_i16(stream))
 
 
@@ -186,7 +205,7 @@ class SoundMessage:
     sound_num: int
     pos: list[float]
 
-    def write(self, stream):
+    def write(self, stream, protocol: Protocol):
         bindata.write_u8(stream, self.ID)
         bindata.write_u8(stream, self.flags)
 
@@ -206,10 +225,10 @@ class SoundMessage:
         else:
             bindata.write_u8(stream, self.sound_num)
 
-        write_coord_n(protocol_flags, stream, self.pos)
+        write_coord_n(protocol.flags, stream, self.pos)
 
     @staticmethod
-    def parse(stream):
+    def parse(stream, protocol: Protocol):
         flags = SoundFlags(bindata.read_u8(stream))
         volume = bindata.read_u8(stream) if (flags & SoundFlags.VOLUME) else SoundMessage.DEFAULT_SOUND_PACKET_VOLUME
         attenuation = bindata.read_u8(stream) if (flags & SoundFlags.ATTENUATION) else SoundMessage.DEFAULT_SOUND_PACKET_ATTENUATION
@@ -227,7 +246,7 @@ class SoundMessage:
         else:
             sound_num = bindata.read_u8(stream)
 
-        pos = read_coord_n(protocol_flags, stream, 3)
+        pos = read_coord_n(protocol.flags, stream, 3)
 
         return SoundMessage(flags, volume, attenuation, ent, channel, sound_num, pos)
 
@@ -238,12 +257,12 @@ class TimeMessage:
 
     time: float
 
-    def write(self, stream):
+    def write(self, stream, protocol: Protocol):
         bindata.write_u8(stream, self.ID)
         bindata.write_f32(stream, self.time)
 
     @staticmethod
-    def parse(stream):
+    def parse(stream, protocol: Protocol):
         return TimeMessage(time=bindata.read_f32(stream))
 
 
@@ -253,12 +272,12 @@ class PrintMessage:
 
     text: str
 
-    def write(self, stream):
+    def write(self, stream, protocol: Protocol):
         bindata.write_u8(stream, self.ID)
         bindata.write_c_str(stream, self.text)
 
     @staticmethod
-    def parse(stream):
+    def parse(stream, protocol: Protocol):
         return PrintMessage(text=bindata.read_c_str(stream))
 
 
@@ -268,12 +287,12 @@ class StuffTextMessage:
 
     text: str
 
-    def write(self, stream):
+    def write(self, stream, protocol: Protocol):
         bindata.write_u8(stream, self.ID)
         bindata.write_c_str(stream, self.text)
 
     @staticmethod
-    def parse(stream):
+    def parse(stream, protocol: Protocol):
         return StuffTextMessage(text=bindata.read_c_str(stream))
 
 
@@ -285,13 +304,13 @@ class SetAngleMessage:
     roll: float
     pitch: float
 
-    def write(self, stream):
+    def write(self, stream, protocol: Protocol):
         bindata.write_u8(stream, self.ID)
-        write_angle_n(protocol_flags, stream, [self.yaw, self.roll, self.pitch])
+        write_angle_n(protocol.flags, stream, [self.yaw, self.roll, self.pitch])
 
     @staticmethod
-    def parse(stream):
-        yaw, roll, pitch = read_angle_n(protocol_flags, stream, 3)
+    def parse(stream, protocol: Protocol):
+        yaw, roll, pitch = read_angle_n(protocol.flags, stream, 3)
         return SetAngleMessage(yaw, roll, pitch)
 
 
@@ -299,19 +318,15 @@ class SetAngleMessage:
 class ServerInfoMessage:
     ID = 11
 
-    protocol: ProtocolVersion
-    protocol_flags: int
     max_clients: int
     gametype: int
     levelname: str
     models_precache: list[str]
     sounds_precache: list[str]
 
-    def write(self, stream):
+    def write(self, stream, protocol: Protocol):
         bindata.write_u8(stream, self.ID)
-        bindata.write_u32(stream, self.protocol)
-        if self.protocol == ProtocolVersion.RMQ:
-            bindata.write_u32(stream, self.protocol_flags)
+        protocol.write(stream)
         bindata.write_u8(stream, self.max_clients)
         bindata.write_u8(stream, self.gametype)
         bindata.write_c_str(stream, self.levelname)
@@ -325,11 +340,8 @@ class ServerInfoMessage:
         bindata.write_c_str(stream, b'')
 
     @staticmethod
-    def parse(stream):
-        protocol = ProtocolVersion(bindata.read_u32(stream))
-        protocol_flags = 0
-        if protocol == ProtocolVersion.RMQ:
-            protocol_flags = bindata.read_u32(stream)
+    def parse(stream, protocol: Protocol):
+        protocol.parse(stream)  # overwrite the protocol with ServerInfo
         max_clients = bindata.read_u8(stream)
         gametype = bindata.read_u8(stream)
         levelname = bindata.read_c_str(stream)
@@ -346,9 +358,8 @@ class ServerInfoMessage:
             sounds_precache.append(s)
             s = bindata.read_c_str(stream)
 
-        return ServerInfoMessage(protocol, protocol_flags, max_clients,
-                                 gametype, levelname, models_precache,
-                                 sounds_precache)
+        return ServerInfoMessage(max_clients, gametype, levelname,
+                                 models_precache, sounds_precache)
 
 
 @dataclasses.dataclass
@@ -358,13 +369,13 @@ class LightstyleMessage:
     index: int
     map: str
 
-    def write(self, stream):
+    def write(self, stream, protocol: Protocol):
         bindata.write_u8(stream, self.ID)
         bindata.write_u8(stream, self.index)
         bindata.write_c_str(stream, self.map)
 
     @staticmethod
-    def parse(stream):
+    def parse(stream, protocol: Protocol):
         return LightstyleMessage(index=bindata.read_u8(stream),
                                  map=bindata.read_c_str(stream))
 
@@ -376,13 +387,13 @@ class UpdateNameMessage:
     player_id: int
     name: str
 
-    def write(self, stream):
+    def write(self, stream, protocol: Protocol):
         bindata.write_u8(stream, self.ID)
         bindata.write_u8(stream, self.player_id)
         bindata.write_c_str(stream, self.name)
 
     @staticmethod
-    def parse(stream):
+    def parse(stream, protocol: Protocol):
         return UpdateNameMessage(player_id=bindata.read_u8(stream),
                                  name=bindata.read_c_str(stream))
 
@@ -394,13 +405,13 @@ class UpdateFragsMessage:
     player_id: int
     frags: int
 
-    def write(self, stream):
+    def write(self, stream, protocol: Protocol):
         bindata.write_u8(stream, self.ID)
         bindata.write_u8(stream, self.player_id)
         bindata.write_i16(stream, self.frags)
 
     @staticmethod
-    def parse(stream):
+    def parse(stream, protocol: Protocol):
         return UpdateFragsMessage(player_id=bindata.read_u8(stream),
                                   frags=bindata.read_i16(stream))
 
@@ -495,7 +506,7 @@ class ClientDataMessage:
     activeweapon: int
     weaponalpha: float
 
-    def write(self, stream):
+    def write(self, stream, protocol: Protocol):
         # TODO: Need to add more to this if we change other data
         if self.armor:
             self.flags |= ServerUpdateFlags.ARMOR
@@ -563,7 +574,7 @@ class ClientDataMessage:
             bindata.write_u8(stream, self.weaponalpha)
 
     @staticmethod
-    def parse(stream):
+    def parse(stream, protocol: Protocol):
         flags = ServerUpdateFlags(bindata.read_u16(stream))
         if flags & ServerUpdateFlags.EXTEND1:
             flags |= ServerUpdateFlags(bindata.read_u8(stream) << 16)
@@ -630,12 +641,12 @@ class StopSoundMessage:
 
     data: int
 
-    def write(self, stream):
+    def write(self, stream, protocol: Protocol):
         bindata.write_u8(stream, self.ID)
         bindata.write_i16(stream, self.data)
 
     @staticmethod
-    def parse(stream):
+    def parse(stream, protocol: Protocol):
         return StopSoundMessage(data=bindata.read_i16(stream))
 
 
@@ -646,13 +657,13 @@ class UpdateColorsMessage:
     player_id: int
     color: int
 
-    def write(self, stream):
+    def write(self, stream, protocol: Protocol):
         bindata.write_u8(stream, self.ID)
         bindata.write_u8(stream, self.player_id)
         bindata.write_u8(stream, self.color)
 
     @staticmethod
-    def parse(stream):
+    def parse(stream, protocol: Protocol):
         return UpdateColorsMessage(player_id=bindata.read_u8(stream),
                                    color=bindata.read_u8(stream))
 
@@ -666,17 +677,17 @@ class ParticleMessage:
     count: int
     color: int
 
-    def write(self, stream):
+    def write(self, stream, protocol: Protocol):
         bindata.write_u8(stream, self.ID)
-        write_coord_n(protocol_flags, stream, self.origin)
+        write_coord_n(protocol.flags, stream, self.origin)
         bindata.write_i8_n(stream, self.direction)
         bindata.write_u8(stream, self.count)
         bindata.write_u8(stream, self.color)
 
     @staticmethod
-    def parse(stream):
+    def parse(stream, protocol: Protocol):
         return ParticleMessage(
-            origin=read_coord_n(protocol_flags, stream, 3),
+            origin=read_coord_n(protocol.flags, stream, 3),
             direction=bindata.read_i8_n(stream, 3),
             count=bindata.read_u8(stream), color=bindata.read_u8(stream))
 
@@ -689,17 +700,17 @@ class DamageMessage:
     blood: int
     from_coords: list[float]
 
-    def write(self, stream):
+    def write(self, stream, protocol: Protocol):
         bindata.write_u8(stream, self.ID)
         bindata.write_u8(stream, self.armor)
         bindata.write_u8(stream, self.blood % 256)
-        write_coord_n(protocol_flags, stream, self.from_coords)
+        write_coord_n(protocol.flags, stream, self.from_coords)
 
     @staticmethod
-    def parse(stream):
+    def parse(stream, protocol: Protocol):
         return DamageMessage(
             armor=bindata.read_u8(stream), blood=bindata.read_u8(stream),
-            from_coords=read_coord_n(protocol_flags, stream, 3))
+            from_coords=read_coord_n(protocol.flags, stream, 3))
 
 
 @dataclasses.dataclass
@@ -713,24 +724,24 @@ class SpawnStaticMessage:
     origin: list[float]
     angles: list[float]
 
-    def write(self, stream):
+    def write(self, stream, protocol: Protocol):
         bindata.write_u8(stream, self.ID)
         bindata.write_u8(stream, self.modelindex)
         bindata.write_u8(stream, self.frame)
         bindata.write_u8(stream, self.colormap)
         bindata.write_u8(stream, self.skin)
-        write_coord_n(protocol_flags, stream, self.origin)
-        write_angle_n(protocol_flags, stream, self.angles)
+        write_coord_n(protocol.flags, stream, self.origin)
+        write_angle_n(protocol.flags, stream, self.angles)
 
     @staticmethod
-    def parse(stream):
+    def parse(stream, protocol: Protocol):
         return SpawnStaticMessage(
             modelindex=bindata.read_u8(stream),
             frame=bindata.read_u8(stream),
             colormap=bindata.read_u8(stream),
             skin=bindata.read_u8(stream),
-            origin=read_coord_n(protocol_flags, stream, 3),
-            angles=read_angle_n(protocol_flags, stream, 3))
+            origin=read_coord_n(protocol.flags, stream, 3),
+            angles=read_angle_n(protocol.flags, stream, 3))
 
 
 @dataclasses.dataclass
@@ -745,7 +756,7 @@ class SpawnBaselineMessage:
     origin: list[float]
     angles: list[float]
 
-    def write(self, stream):
+    def write(self, stream, protocol: Protocol):
         bindata.write_u8(stream, self.ID)
         bindata.write_i16(stream, self.entity_num)
         bindata.write_u8(stream, self.modelindex)
@@ -753,11 +764,11 @@ class SpawnBaselineMessage:
         bindata.write_u8(stream, self.colormap)
         bindata.write_u8(stream, self.skin)
         for i in range(3):
-            write_coord(protocol_flags, stream, self.origin[i])
-            write_angle(protocol_flags, stream, self.angles[i])
+            write_coord(protocol.flags, stream, self.origin[i])
+            write_angle(protocol.flags, stream, self.angles[i])
 
     @staticmethod
-    def parse(stream):
+    def parse(stream, protocol: Protocol):
         entity_num = bindata.read_i16(stream)
         modelindex=bindata.read_u8(stream)
         frame = bindata.read_u8(stream)
@@ -766,8 +777,8 @@ class SpawnBaselineMessage:
         origin = [None, None, None]
         angles = [None, None, None]
         for i in range(3):
-            origin[i] = read_coord(protocol_flags, stream)
-            angles[i] = read_angle(protocol_flags, stream)
+            origin[i] = read_coord(protocol.flags, stream)
+            angles[i] = read_angle(protocol.flags, stream)
         return SpawnBaselineMessage(entity_num, modelindex, frame, colormap,
             skin, origin, angles)
 
@@ -794,13 +805,13 @@ class TempEntityType(enum.IntEnum):
 class TempEntityPosition:
     pos: list[float]
 
-    def write(self, stream):
-        write_coord_n(protocol_flags, stream, self.pos)
+    def write(self, stream, protocol: Protocol):
+        write_coord_n(protocol.flags, stream, self.pos)
 
     @staticmethod
-    def parse(stream):
+    def parse(stream, protocol: Protocol):
         return TempEntityPosition(
-            pos=read_coord_n(protocol_flags, stream, 3))
+            pos=read_coord_n(protocol.flags, stream, 3))
 
 @dataclasses.dataclass
 class TempEntityPositionColormap:
@@ -808,15 +819,15 @@ class TempEntityPositionColormap:
     color_start: int
     color_end: int
 
-    def write(self, stream):
-        write_coord_n(protocol_flags, stream, self.pos)
+    def write(self, stream, protocol: Protocol):
+        write_coord_n(protocol.flags, stream, self.pos)
         bindata.write_u8(stream, self.color_start)
         bindata.write_u8(stream, self.color_end)
 
     @staticmethod
-    def parse(stream):
+    def parse(stream, protocol: Protocol):
         return TempEntityPositionColormap(
-            pos=read_coord_n(protocol_flags, stream, 3),
+            pos=read_coord_n(protocol.flags, stream, 3),
             color_start=bindata.read_u8(stream),
             color_end=bindata.read_u8(stream))
 
@@ -825,15 +836,15 @@ class TempEntityPositionColor:
     pos: list[float]
     color: list[float]
 
-    def write(self, stream):
-        write_coord_n(protocol_flags, stream, self.pos)
-        write_coord_n(protocol_flags, stream, self.color)
+    def write(self, stream, protocol: Protocol):
+        write_coord_n(protocol.flags, stream, self.pos)
+        write_coord_n(protocol.flags, stream, self.color)
 
     @staticmethod
-    def parse(stream):
+    def parse(stream, protocol: Protocol):
         return TempEntityPositionColor(
-            pos=read_coord_n(protocol_flags, stream, 3),
-            explosion_color=read_coord_n(protocol_flags, stream, 3))
+            pos=read_coord_n(protocol.flags, stream, 3),
+            explosion_color=read_coord_n(protocol.flags, stream, 3))
 
 @dataclasses.dataclass
 class TempEntityBeam:
@@ -841,28 +852,28 @@ class TempEntityBeam:
     start: list[float]
     end: list[float]
 
-    def write(self, stream):
+    def write(self, stream, protocol: Protocol):
         bindata.write_i16(stream, self.entity_num)
-        write_coord_n(protocol_flags, stream, self.start)
-        write_coord_n(protocol_flags, stream, self.end)
+        write_coord_n(protocol.flags, stream, self.start)
+        write_coord_n(protocol.flags, stream, self.end)
 
     @staticmethod
-    def parse(stream):
+    def parse(stream, protocol: Protocol):
         return TempEntityBeam(entity_num=bindata.read_i16(stream),
-                              start=read_coord_n(protocol_flags, stream, 3),
-                              end=read_coord_n(protocol_flags, stream, 3))
+                              start=read_coord_n(protocol.flags, stream, 3),
+                              end=read_coord_n(protocol.flags, stream, 3))
 
 @dataclasses.dataclass
 class TempEntityBeamName:
     name: str
     beam: TempEntityBeam
 
-    def write(self, stream):
+    def write(self, stream, protocol: Protocol):
         bindata.write_c_str(stream, self.name)
         self.beam.write(stream)
 
     @staticmethod
-    def parse(stream):
+    def parse(stream, protocol: Protocol):
         return TempEntityBeamName(name=bindata.read_c_str(stream),
                                   beam=TempEntityBeam.parse(stream))
 
@@ -873,13 +884,13 @@ class TempEntityMessage:
     type: TempEntityType
     data: None
 
-    def write(self, stream):
+    def write(self, stream, protocol: Protocol):
         bindata.write_u8(stream, self.ID)
         bindata.write_u8(stream, self.type)
-        self.data.write(stream)
+        self.data.write(stream, protocol)
 
     @staticmethod
-    def parse(stream):
+    def parse(stream, protocol: Protocol):
         type = TempEntityType(bindata.read_u8(stream))
         match type:
             case (TempEntityType.WIZSPIKE |
@@ -891,18 +902,18 @@ class TempEntityMessage:
                   TempEntityType.TAREXPLOSION |
                   TempEntityType.LAVASPLASH |
                   TempEntityType.TELEPORT):
-                return TempEntityMessage(type, TempEntityPosition.parse(stream))
+                return TempEntityMessage(type, TempEntityPosition.parse(stream, protocol))
             case TempEntityType.EXPLOSION2:
-                return TempEntityMessage(type, TempEntityPositionColormap.parse(stream))
+                return TempEntityMessage(type, TempEntityPositionColormap.parse(stream, protocol))
             case TempEntityType.EXPLOSION3:
-                return TempEntityMessage(type, TempEntityPositionColor.parse(stream))
+                return TempEntityMessage(type, TempEntityPositionColor.parse(stream, protocol))
             case (TempEntityType.LIGHTNING1 |
                   TempEntityType.LIGHTNING2 |
                   TempEntityType.LIGHTNING3 |
                   TempEntityType.BEAM):
-                return TempEntityMessage(type, TempEntityBeam.parse(stream))
+                return TempEntityMessage(type, TempEntityBeam.parse(stream, protocol))
             case TempEntityType.LIGHTNING4:
-                return TempEntityMessage(type, TempEntityBeamName.parse(stream))
+                return TempEntityMessage(type, TempEntityBeamName.parse(stream, protocol))
             case _:
                 assert False
 
@@ -913,12 +924,12 @@ class SetPauseMessage:
 
     paused: int
 
-    def write(self, stream):
+    def write(self, stream, protocol: Protocol):
         bindata.write_u8(stream, self.ID)
         bindata.write_u8(stream, self.paused)
 
     @staticmethod
-    def parse(stream):
+    def parse(stream, protocol: Protocol):
         return SetPauseMessage(paused=bindata.read_u8(stream))
 
 
@@ -928,12 +939,12 @@ class SignOnNumMessage:
 
     stage: int
 
-    def write(self, stream):
+    def write(self, stream, protocol: Protocol):
         bindata.write_u8(stream, self.ID)
         bindata.write_u8(stream, self.stage)
 
     @staticmethod
-    def parse(stream):
+    def parse(stream, protocol: Protocol):
         return SignOnNumMessage(stage=bindata.read_u8(stream))
 
 
@@ -943,12 +954,12 @@ class CenterPrintMessage:
 
     text: str
 
-    def write(self, stream):
+    def write(self, stream, protocol: Protocol):
         bindata.write_u8(stream, self.ID)
         bindata.write_c_str(stream, self.text)
 
     @staticmethod
-    def parse(stream):
+    def parse(stream, protocol: Protocol):
         return CenterPrintMessage(text=bindata.read_c_str(stream))
 
 
@@ -956,11 +967,11 @@ class CenterPrintMessage:
 class KilledMonsterMessage:
     ID = 27
 
-    def write(self, stream):
+    def write(self, stream, protocol: Protocol):
         bindata.write_u8(stream, self.ID)
 
     @staticmethod
-    def parse(stream):
+    def parse(stream, protocol: Protocol):
         return KilledMonsterMessage()
 
 
@@ -968,11 +979,11 @@ class KilledMonsterMessage:
 class FoundSecretMessage:
     ID = 28
 
-    def write(self, stream):
+    def write(self, stream, protocol: Protocol):
         bindata.write_u8(stream, self.ID)
 
     @staticmethod
-    def parse(stream):
+    def parse(stream, protocol: Protocol):
         return FoundSecretMessage()
 
 
@@ -985,17 +996,17 @@ class SpawnStaticSoundMessage:
     volume: int
     attenuation: int
 
-    def write(self, stream):
+    def write(self, stream, protocol: Protocol):
         bindata.write_u8(stream, self.ID)
-        write_coord_n(protocol_flags, stream, self.origin)
+        write_coord_n(protocol.flags, stream, self.origin)
         bindata.write_u8(stream, self.sound_num)
         bindata.write_u8(stream, self.volume)
         bindata.write_u8(stream, self.attenuation)
 
     @staticmethod
-    def parse(stream):
+    def parse(stream, protocol: Protocol):
         return SpawnStaticSoundMessage(
-            origin=read_coord_n(protocol_flags, stream, 3),
+            origin=read_coord_n(protocol.flags, stream, 3),
             sound_num=bindata.read_u8(stream), volume=bindata.read_u8(stream),
             attenuation=bindata.read_u8(stream))
 
@@ -1004,11 +1015,11 @@ class SpawnStaticSoundMessage:
 class IntermissionMessage:
     ID = 30
 
-    def write(self, stream):
+    def write(self, stream, protocol: Protocol):
         bindata.write_u8(stream, self.ID)
 
     @staticmethod
-    def parse(stream):
+    def parse(stream, protocol: Protocol):
         return IntermissionMessage()
 
 
@@ -1018,12 +1029,12 @@ class FinaleMessage:
 
     text: str
 
-    def write(self, stream):
+    def write(self, stream, protocol: Protocol):
         bindata.write_u8(stream, self.ID)
         bindata.write_c_str(stream, self.text)
 
     @staticmethod
-    def parse(stream):
+    def parse(stream, protocol: Protocol):
         return FinaleMessage(text=bindata.read_c_str(stream))
 
 
@@ -1034,13 +1045,13 @@ class CdTrackMessage:
     cdtrack: int
     looptrack: int
 
-    def write(self, stream):
+    def write(self, stream, protocol: Protocol):
         bindata.write_u8(stream, self.ID)
         bindata.write_u8(stream, self.cdtrack)
         bindata.write_u8(stream, self.looptrack)
 
     @staticmethod
-    def parse(stream):
+    def parse(stream, protocol: Protocol):
         return CdTrackMessage(cdtrack=bindata.read_u8(stream),
                               looptrack=bindata.read_u8(stream))
 
@@ -1049,11 +1060,11 @@ class CdTrackMessage:
 class SellscreenMessage:
     ID = 33
 
-    def write(self, stream):
+    def write(self, stream, protocol: Protocol):
         bindata.write_u8(stream, self.ID)
 
     @staticmethod
-    def parse(stream):
+    def parse(stream, protocol: Protocol):
         return SellscreenMessage()
 
 
@@ -1063,12 +1074,12 @@ class CutsceneMessage:
 
     text: str
 
-    def write(self, stream):
+    def write(self, stream, protocol: Protocol):
         bindata.write_u8(stream, self.ID)
         bindata.write_c_str(stream, self.text)
 
     @staticmethod
-    def parse(stream):
+    def parse(stream, protocol: Protocol):
         return CutsceneMessage(text=bindata.read_c_str(stream))
 
 
@@ -1161,12 +1172,12 @@ class EntityUpdateMessage:
     scale: int
     frame_finish_time: int
 
-    def write(self, stream):
+    def write(self, stream, protocol: Protocol):
         # TODO: Need to adapt this if we change certain data
         bindata.write_u8(stream, self.flags & 0x000000ff)
         if self.flags & UpdateFlags.MOREBITS:
             bindata.write_u8(stream, (self.flags & 0x0000ff00) >> 8)
-        if protocol != ProtocolVersion.NETQUAKE:
+        if protocol.version != ProtocolVersion.NETQUAKE:
             if self.flags & UpdateFlags.EXTEND1:
                 bindata.write_u8(stream, (self.flags & 0x00ff0000) >> 16)
             if self.flags & UpdateFlags.EXTEND2:
@@ -1188,19 +1199,19 @@ class EntityUpdateMessage:
             bindata.write_u8(stream, self.effects)
 
         if self.flags & UpdateFlags.ORIGIN1:
-            write_coord(protocol_flags, stream, self.origin[0])
+            write_coord(protocol.flags, stream, self.origin[0])
         if self.flags & UpdateFlags.ANGLE1:
-            write_angle(protocol_flags, stream, self.angles[0])
+            write_angle(protocol.flags, stream, self.angles[0])
         if self.flags & UpdateFlags.ORIGIN2:
-            write_coord(protocol_flags, stream, self.origin[1])
+            write_coord(protocol.flags, stream, self.origin[1])
         if self.flags & UpdateFlags.ANGLE2:
-            write_angle(protocol_flags, stream, self.angles[1])
+            write_angle(protocol.flags, stream, self.angles[1])
         if self.flags & UpdateFlags.ORIGIN3:
-            write_coord(protocol_flags, stream, self.origin[2])
+            write_coord(protocol.flags, stream, self.origin[2])
         if self.flags & UpdateFlags.ANGLE3:
-            write_angle(protocol_flags, stream, self.angles[2])
+            write_angle(protocol.flags, stream, self.angles[2])
 
-        if protocol == ProtocolVersion.NETQUAKE:
+        if protocol.version == ProtocolVersion.NETQUAKE:
             if self.flags & UpdateFlags.TRANS:
                 bindata.write_f32(stream, self.temp)
                 bindata.write_f32(stream, self.transparency)
@@ -1219,11 +1230,11 @@ class EntityUpdateMessage:
                 bindata.write_u8(stream, self.frame_finish_time)
 
     @staticmethod
-    def parse(flags: int, stream):
+    def parse(flags: int, stream, protocol: Protocol):
         if flags & UpdateFlags.MOREBITS:
             flags |= bindata.read_u8(stream) << 8
 
-        if protocol != ProtocolVersion.NETQUAKE:
+        if protocol.version != ProtocolVersion.NETQUAKE:
             if flags & UpdateFlags.EXTEND1:
                 flags |= bindata.read_u8(stream) << 16
             if flags & UpdateFlags.EXTEND2:
@@ -1239,17 +1250,17 @@ class EntityUpdateMessage:
         origin = [0, 0, 0]  # TODO: should be from baseline. actually need this for backpack origin
         angles = [None, None, None]
         if flags & UpdateFlags.ORIGIN1:
-            origin[0] = read_coord(protocol_flags, stream)
+            origin[0] = read_coord(protocol.flags, stream)
         if flags & UpdateFlags.ANGLE1:
-            angles[0] = read_angle(protocol_flags, stream)
+            angles[0] = read_angle(protocol.flags, stream)
         if flags & UpdateFlags.ORIGIN2:
-            origin[1] = read_coord(protocol_flags, stream)
+            origin[1] = read_coord(protocol.flags, stream)
         if flags & UpdateFlags.ANGLE2:
-            angles[1] = read_angle(protocol_flags, stream)
+            angles[1] = read_angle(protocol.flags, stream)
         if flags & UpdateFlags.ORIGIN3:
-            origin[2] = read_coord(protocol_flags, stream)
+            origin[2] = read_coord(protocol.flags, stream)
         if flags & UpdateFlags.ANGLE3:
-            angles[2] = read_angle(protocol_flags, stream)
+            angles[2] = read_angle(protocol.flags, stream)
 
         temp = None
         transparency = None
@@ -1257,7 +1268,7 @@ class EntityUpdateMessage:
         alpha = None
         scale = None
         frame_finish_time = None
-        if protocol == ProtocolVersion.NETQUAKE:
+        if protocol.version == ProtocolVersion.NETQUAKE:
             if flags & UpdateFlags.TRANS:
                 temp = bindata.read_f32(stream)
                 transparency = bindata.read_f32(stream)
@@ -1277,12 +1288,12 @@ class EntityUpdateMessage:
             alpha, scale, frame_finish_time)
 
 
-def parse_message(stream):
+def parse_message(stream, protocol: Protocol):
     message_id = bindata.read_u8(stream)
     #if message_id == 0xff:
     #    raise ValueError("end of message")
     if message_id & UpdateFlags.SIGNAL:
-        return EntityUpdateMessage.parse(message_id, stream)
+        return EntityUpdateMessage.parse(message_id, stream, protocol)
 
     Message = MESSAGE_TYPE_FROM_ID[message_id]
-    return Message.parse(stream)
+    return Message.parse(stream, protocol)

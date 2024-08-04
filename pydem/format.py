@@ -5,6 +5,7 @@ import numpy
 
 from . import bindata
 from . import messages
+from .messages import Protocol, ProtocolVersion, ProtocolFlags
 
 
 @dataclasses.dataclass
@@ -46,13 +47,13 @@ class Block:
     viewangles: ViewAngles
     messages: list
 
-    def write(self, stream):
+    def write(self, stream, protocol: Protocol):
         temp = io.BytesIO()
         for message in self.messages:
-            message.write(temp)
+            message.write(temp, protocol)
         if not self.messages:
             # block without messages does not seem supported, so write a nop
-            messages.NopMessage().write(temp)
+            messages.NopMessage().write(temp, protocol)
         block_len = temp.tell()
 
         bindata.write_i32(stream, block_len)
@@ -60,7 +61,7 @@ class Block:
         bindata.write_bytes(stream, temp.getbuffer())
 
     @staticmethod
-    def parse(stream):
+    def parse(stream, protocol: Protocol):
         block_len = bindata.read_i32(stream)
         viewangles = ViewAngles.parse(stream)
 
@@ -68,7 +69,7 @@ class Block:
         total_num_bytes_read = 0
         while total_num_bytes_read < block_len:
             pos_before = stream.tell()
-            message = messages.parse_message(stream)
+            message = messages.parse_message(stream, protocol)
             read_messages.append(message)
             total_num_bytes_read += (stream.tell() - pos_before)
         if total_num_bytes_read != block_len:
@@ -92,22 +93,30 @@ class ClientStats:
 
 @dataclasses.dataclass
 class Demo:
+    protocol: Protocol
     cdtrack: CdTrack
     blocks: list[Block]
 
-    def write(self, stream):
+    def write(self, stream, protocol: Protocol = None):
+        if protocol is None:
+            # if not specified otherwise, use the original protocol with which
+            # we read the demo to write it out
+            protocol = self.protocol
         self.cdtrack.write(stream)
         for block in self.blocks:
-            block.write(stream)
+            block.write(stream, protocol)
 
     @staticmethod
     def parse(stream):
         cdtrack = CdTrack.parse(stream)
         blocks = []
+        # assume plain netquake protocol by default (may be changed by
+        # ServerInfoMessage during parsing of blocks)
+        protocol = Protocol(ProtocolVersion.NETQUAKE)
         while stream.read(1):
             stream.seek(-1, 1)
-            blocks.append(Block.parse(stream))
-        return Demo(cdtrack, blocks)
+            blocks.append(Block.parse(stream, protocol))
+        return Demo(protocol, cdtrack, blocks)
 
     def get_precaches(self):
         server_info_message = [m for b in self.blocks for m in b.messages
