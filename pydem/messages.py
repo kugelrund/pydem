@@ -1258,6 +1258,21 @@ class CutsceneMessage:
         return CutsceneMessage(text=bindata.read_c_str(stream))
 
 
+@dataclasses.dataclass
+class AchievementMessage:
+    ID = 52
+
+    text: str
+
+    def write(self, stream, protocol: Protocol):
+        bindata.write_u8(stream, self.ID)
+        bindata.write_c_str(stream, self.text)
+
+    @staticmethod
+    def parse(stream, protocol: Protocol):
+        return AchievementMessage(text=bindata.read_c_str(stream))
+
+
 MESSAGE_TYPES = [
     BadMessage,
     NopMessage,
@@ -1296,6 +1311,7 @@ MESSAGE_TYPES = [
     SpawnStatic2Message,
     SpawnStaticSound2Message,
     SpawnBaseline2Message,
+    AchievementMessage,
 ]
 
 MESSAGE_TYPE_FROM_ID = dict(zip([m.ID for m in MESSAGE_TYPES], MESSAGE_TYPES))
