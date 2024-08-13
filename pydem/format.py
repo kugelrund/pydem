@@ -5,7 +5,7 @@ import numpy
 
 from . import bindata
 from . import messages
-from .messages import Protocol, ProtocolVersion, ProtocolFlags
+from .messages import Protocol, ProtocolOverride, ProtocolVersion, ProtocolFlags
 
 
 @dataclasses.dataclass
@@ -93,15 +93,15 @@ class ClientStats:
 
 @dataclasses.dataclass
 class Demo:
-    protocol: Protocol
     cdtrack: CdTrack
     blocks: list[Block]
 
-    def write(self, stream, protocol: Protocol = None):
-        if protocol is None:
-            # if not specified otherwise, use the original protocol with which
-            # we read the demo to write it out
-            protocol = self.protocol
+    def write(self, stream, protocol_override: Protocol = None):
+        # assume plain netquake protocol by default (may be changed by
+        # ServerInfoMessage during writing of blocks)
+        protocol = Protocol(ProtocolVersion.NETQUAKE)
+        if protocol_override is not None:
+            protocol = ProtocolOverride(protocol_override)
         self.cdtrack.write(stream)
         for block in self.blocks:
             block.write(stream, protocol)
@@ -116,7 +116,7 @@ class Demo:
         while stream.read(1):
             stream.seek(-1, 1)
             blocks.append(Block.parse(stream, protocol))
-        return Demo(protocol, cdtrack, blocks)
+        return Demo(cdtrack, blocks)
 
     def get_precaches(self):
         server_info_message = [m for b in self.blocks for m in b.messages

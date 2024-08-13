@@ -33,16 +33,29 @@ class Protocol:
             raise ValueError("Protocol flags are only supported for protocol "
                              "version RMQ (999)!")
 
+    def change(self, other):
+        self.version = other.version
+        self.flags = other.flags
+
     def write(self, stream):
         bindata.write_u32(stream, self.version)
         if self.version == ProtocolVersion.RMQ:
             bindata.write_u32(stream, self.flags)
 
-    def parse(self, stream):
-        self.version = ProtocolVersion(bindata.read_u32(stream))
-        self.flags = 0
-        if self.version == ProtocolVersion.RMQ:
-            self.flags = bindata.read_u32(stream)
+    @staticmethod
+    def parse(stream):
+        version = ProtocolVersion(bindata.read_u32(stream))
+        flags = 0
+        if version == ProtocolVersion.RMQ:
+            flags = bindata.read_u32(stream)
+        return Protocol(version, flags)
+
+class ProtocolOverride(Protocol):
+    def __init__(self, protocol: Protocol):
+        super().__init__(protocol.version, protocol.flags)
+
+    def change(self, other):
+        pass  # overriding protocol cannot be changed
 
 
 def read_coord(protocol_flags: int, stream) -> float:
@@ -318,6 +331,7 @@ class SetAngleMessage:
 class ServerInfoMessage:
     ID = 11
 
+    protocol: Protocol
     max_clients: int
     gametype: int
     levelname: str
@@ -325,6 +339,7 @@ class ServerInfoMessage:
     sounds_precache: list[str]
 
     def write(self, stream, protocol: Protocol):
+        protocol.change(self.protocol)
         bindata.write_u8(stream, self.ID)
         protocol.write(stream)
         bindata.write_u8(stream, self.max_clients)
@@ -341,7 +356,7 @@ class ServerInfoMessage:
 
     @staticmethod
     def parse(stream, protocol: Protocol):
-        protocol.parse(stream)  # overwrite the protocol with ServerInfo
+        protocol.change(Protocol.parse(stream))  # overwrite the protocol with ServerInfo
         max_clients = bindata.read_u8(stream)
         gametype = bindata.read_u8(stream)
         levelname = bindata.read_c_str(stream)
@@ -358,7 +373,7 @@ class ServerInfoMessage:
             sounds_precache.append(s)
             s = bindata.read_c_str(stream)
 
-        return ServerInfoMessage(max_clients, gametype, levelname,
+        return ServerInfoMessage(protocol, max_clients, gametype, levelname,
                                  models_precache, sounds_precache)
 
 
