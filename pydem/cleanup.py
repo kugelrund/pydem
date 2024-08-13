@@ -5,7 +5,7 @@ from . import messages
 
 
 def fix_intermission_lag(demo: format.Demo):
-    pattern = b"The recorded time was (?:(\d)*:)?([0-5]?\d.\d{5})"
+    pattern = rb"The recorded time was (?:(\d)*:)?([0-5]?\d.\d{5})"
     for i, block in enumerate(demo.blocks):
         if not any(isinstance(m, messages.IntermissionMessage)
                    for m in block.messages):

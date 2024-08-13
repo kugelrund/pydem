@@ -707,10 +707,10 @@ def find_closest_collectable_frame_to_client(client_origin,
 
 def get_backpack_contents(collection_text: bytes) -> typing.Iterator:
     pattern = (b'You get '
-               b'(?:([1-9]\d*) shells)?(?:, )?'
-               b'(?:([1-9]\d*) nails)?(?:, )?'
-               b'(?:([1-9]\d*) rockets)?(?:, )?'
-               b'(?:([1-9]\d*) cells)?\\n')
+               rb'(?:([1-9]\d*) shells)?(?:, )?'
+               rb'(?:([1-9]\d*) nails)?(?:, )?'
+               rb'(?:([1-9]\d*) rockets)?(?:, )?'
+               rb'(?:([1-9]\d*) cells)?\\n')
     match = re.match(pattern, collection_text)
     for i, stat_type in enumerate((Shells, Nails, Rockets, Cells)):
         if match.group(i+1):
