@@ -356,7 +356,8 @@ class ServerInfoMessage:
 
     @staticmethod
     def parse(stream, protocol: Protocol):
-        protocol.change(Protocol.parse(stream))  # overwrite the protocol with ServerInfo
+        parsed_proto = Protocol.parse(stream)
+        protocol.change(parsed_proto)  # overwrite the protocol with ServerInfo
         max_clients = bindata.read_u8(stream)
         gametype = bindata.read_u8(stream)
         levelname = bindata.read_c_str(stream)
@@ -373,7 +374,7 @@ class ServerInfoMessage:
             sounds_precache.append(s)
             s = bindata.read_c_str(stream)
 
-        return ServerInfoMessage(protocol, max_clients, gametype, levelname,
+        return ServerInfoMessage(parsed_proto, max_clients, gametype, levelname,
                                  models_precache, sounds_precache)
 
 
