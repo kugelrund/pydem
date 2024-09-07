@@ -6,5 +6,5 @@ setup(
     url='https://github.com/kugelrund/pydem',
     author='kugelrund',
     packages=['pydem'],
-    install_requires=['numpy'],
+    install_requires=['matplotlib', 'numpy', 'scipy'],
 )
