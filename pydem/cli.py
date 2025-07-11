@@ -85,6 +85,10 @@ def main():
         help="Removes notification prints that contain the given text.")
     parser.add_argument('--remove_sounds', type=str, action='append',
         help="Removes sounds whose name contains the given text.")
+    parser.add_argument('--replace_sound', type=str, nargs=2, action='append',
+        help="Replace a sound with another")
+    parser.add_argument('--replace_weaponmodel', type=str, nargs=2, action='append',
+        help="Replace a weaponmodel with another")
     parser.add_argument('--smooth_viewangles', action='store_true')
     parser.add_argument('--spawnparams', action='store_true',
         help="Write .cfg files for spawnparams")
@@ -162,6 +166,10 @@ def main():
             cleanup.remove_prints(demo, args.remove_prints)
         if args.remove_sounds:
             cleanup.remove_sounds(demo, args.remove_sounds)
+        if args.replace_sound:
+            cleanup.replace_sound(demo, args.replace_sound)
+        if args.replace_weaponmodel:
+            cleanup.replace_weaponmodel(demo, args.replace_weaponmodel)
         if args.smooth_viewangles:
             smoothing.smooth_viewangles(demo)
         if args.remove_fades:

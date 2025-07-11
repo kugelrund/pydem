@@ -160,3 +160,29 @@ def cut_end_after(demo: format.Demo, duration: float, end_kind: str):
         print(f"Warning: {end_kind} is shorter than duration to cut to!")
     # assuming that last block is disconnect message
     del demo.blocks[i_first_to_remove:-1]
+
+
+def replace_sound(demo: format.Demo, replacement_pairs: list[list[str]]):
+    replacement_pairs_bytes = [[x.encode('utf-8') for x in pair]
+                               for pair in replacement_pairs]
+    _, sounds_precache = demo.get_precaches()
+    for block in demo.blocks:
+        for m in block.messages:
+            if not isinstance(m, messages.SoundMessage):
+                continue
+            for old_sound, new_sound in replacement_pairs_bytes:
+                if sounds_precache[m.sound_num] == old_sound:
+                    m.sound_num = sounds_precache.index(new_sound)
+
+
+def replace_weaponmodel(demo: format.Demo, replacement_pairs: list[list[str]]):
+    replacement_pairs_bytes = [[x.encode('utf-8') for x in pair]
+                               for pair in replacement_pairs]
+    models_precache, _ = demo.get_precaches()
+    for block in demo.blocks:
+        for m in block.messages:
+            if not isinstance(m, messages.ClientDataMessage):
+                continue
+            for old_weaponmodel, new_weaponmodel in replacement_pairs_bytes:
+                if models_precache[m.weapon] == old_weaponmodel:
+                    m.weapon = models_precache.index(new_weaponmodel)
