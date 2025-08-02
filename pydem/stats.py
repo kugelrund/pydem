@@ -852,6 +852,15 @@ def get_damage(demo):
             damage.append(damage_messages[0])
     return damage
 
+def get_lost_health(stats_previous, stats, static_collections):
+    collected_health = sum(c.get_pickup(Health)
+                                for c in static_collections)
+    health_before_loss = Health.bound(
+        stats_previous.health + collected_health, stats.items
+    )
+    lost_health = (health_before_loss - stats.health)
+    assert lost_health >= 0.0
+    return lost_health
 
 def verify_damage_message(damage: messages.DamageMessage, armor: int, reduction: float):
     damage_ceiled = damage.blood + damage.armor
@@ -1057,14 +1066,8 @@ def rebuild_stats(start_stats_per_player: list[format.ClientStats],
         old_reduction = get_damage_reduction(old_stats_previous.items)
         verify_damage_message(damage[i], old_stats_previous.armor, old_reduction)
         old_damage_ceiled = damage[i].blood + damage[i].armor
-
-        old_collected_health = sum(c.get_pickup(Health)
-                                   for c in old_static_collections[i])
-        old_stats_health_before_loss = Health.bound(
-            old_stats_previous.health + old_collected_health, old_stats.items)
-        old_lost_health = (old_stats_health_before_loss - old_stats.health)
-        assert old_lost_health >= 0.0
-
+        old_lost_health = get_lost_health(old_stats_previous, old_stats,
+                                          old_static_collections[i])
         new_reduction = get_damage_reduction(stats.items)
         if (old_damage_ceiled == 0.0 or (old_reduction == new_reduction and (old_lost_armor == 0.0 or (old_lost_armor != old_stats_previous.armor and old_lost_armor <= stats.armor)))):
             stats.armor -= old_lost_armor
