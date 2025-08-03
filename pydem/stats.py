@@ -1179,33 +1179,27 @@ def remove_collection_sound(sound_num: int, viewent_num: int,
     sounds_to_remove = [m for m in block.messages
                         if (isinstance(m, messages.SoundMessage) and
                             m.sound_num == sound_num and m.ent == viewent_num)]
-    assert len(sounds_to_remove) == 1
+    assert len(sounds_to_remove) > 0
     block.messages.remove(sounds_to_remove[0])
 
 def remove_collection_print(print_event: PrintCollectEvent, demo: format.Demo):
     remaining_text = bytes(print_event.text)
     block = demo.blocks[print_event.block_index]
 
-    # expect exactly one item pickup fade and no other StuffTextMessage
-    # TODO: Two pickups in one block might be possible? We cannot deal with
-    # that at this time
+    # expect at least one item pickup fade
     stuff_text_messages = [m for m in block.messages
                            if isinstance(m, messages.StuffTextMessage)]
-    stuff_text_message, = stuff_text_messages
-    assert stuff_text_message.text == b'bf\n'
-    block.messages.remove(stuff_text_message)
+    assert len(stuff_text_messages) > 0
+    assert stuff_text_messages[0].text == b'bf\n'
+    block.messages.remove(stuff_text_messages[0])
 
     # make sure that all other messages are PrintMessage and that they belong
     # exactly to this print_event
-    for m in block.messages:
+    while remaining_text:
+        m = block.messages.pop(0)
         assert isinstance(m, messages.PrintMessage)
-        assert m.text in remaining_text
-        remaining_text = remaining_text.replace(m.text, b'')
-    # and there should not be any other text remaining
-    assert not remaining_text
-
-    # so now we can remove all messages
-    block.messages.clear()
+        assert remaining_text.startswith(m.text)
+        remaining_text = remaining_text.removeprefix(m.text)
 
 def add_collection_sound(collect_sound: CollectSound, client_pos: list[float],
                          viewent_num: int, sounds_precache: list[str],
