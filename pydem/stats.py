@@ -1108,7 +1108,6 @@ def rebuild_stats(start_stats_per_player: list[format.ClientStats],
             assert (old_stats_previous.armor - old_stats.armor) == old_lost_armor
 
         old_reduction = get_damage_reduction(old_stats_previous.items)
-        verify_damage_message(damage[i], old_stats_previous.armor, old_reduction)
         old_damage_ceiled = damage[i].blood + damage[i].armor
         old_lost_health = get_lost_health(old_stats_previous, old_stats,
                                           old_static_collections[i])
@@ -1117,6 +1116,10 @@ def rebuild_stats(start_stats_per_player: list[format.ClientStats],
             stats.armor -= old_lost_armor
             stats.health -= old_lost_health
         else:
+            # have to simulate lost health and lost armor from the damage
+            # message. so first make sure that the damage message fulfills the
+            # the assumptions that we base the reconstruction on
+            verify_damage_message(damage[i], old_stats_previous.armor, old_reduction)
             # TODO: gotta replace the damage message... :(
             lost_armor_lower_bound, lost_armor_upper_bound = lost_armor_bounds(
                 old_damage_ceiled, stats.armor, new_reduction)
