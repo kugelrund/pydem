@@ -739,7 +739,8 @@ def get_collections(demo):
 
         block_index_previous = demo.get_previous_block_index_with_time_message(block_index)
         statics_candidates = [static for static in statics_by_frame[block_index_previous]
-                              if static.collectable.type.collect_sound == event.sound_event.sound]
+                              if static.collectable.type.collect_sound == event.sound_event.sound and
+                              static.collectable.type.print_text.lower() == event.print_event.text.lower()]
         closest_static, distance_static = find_closest_collectable_frame_to_client(
             client_origin, statics_candidates)
 
@@ -749,8 +750,8 @@ def get_collections(demo):
             closest_backpack, distance_backpack = find_closest_collectable_frame_to_client(
                 client_origin, backpacks_by_frame[block_index_previous])
 
-        if distance_static < distance_backpack:
-            assert event.print_event.text == closest_static.collectable.type.print_text
+        if closest_static:
+            assert distance_static < distance_backpack
             statics_by_frame[block_index_previous].remove(closest_static)
             distance = distance_static
             closest = closest_static.collectable
