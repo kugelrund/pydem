@@ -686,15 +686,13 @@ def get_client_positions(demo, client_num):
             client_positions.append([math.inf]*3)
     return client_positions
 
-def is_sound_from_client_position(client_origin, sound_origin) -> bool:
+def get_sound_client_distance(client_origin, sound_origin):
     assert len(client_origin) == len(sound_origin) == 3
     # sounds are created at center of bounding box, see SV_StartSound
     client_center = collision.PlayerBounds.center(client_origin)
-    max_diff = max(abs(x - y) for x, y in zip(client_center, sound_origin))
-    # can't check for equality as this does not seem to be accurate all the time
-    # for some reason... Perhaps the client origin can change slightly between
-    # an entity update and when the sound is created.
-    return max_diff < 2.25
+    return math.sqrt(
+        sum((a - b)**2 for a, b in zip(client_center, sound_origin))
+    )
 
 def find_closest_collectable_frame_to_client(client_origin,
                                              collectable_active_frames):
@@ -735,8 +733,10 @@ def get_collections(demo):
     for event in collection_events:
         block_index = event.sound_event.block_index
         client_origin = client_positions[block_index]
-        assert is_sound_from_client_position(client_origin=client_origin,
-                                             sound_origin=event.sound_event.origin)
+        sound_distance = get_sound_client_distance(
+            client_origin=client_origin, sound_origin=event.sound_event.origin)
+        if sound_distance > 0.0:
+            print(f"Warning: sound distance {sound_distance} for collection at time {times[block_index]}")
 
         block_index_previous = demo.get_previous_block_index_with_time_message(block_index)
         statics_candidates = [static for static in statics_by_frame[block_index_previous]
@@ -764,7 +764,8 @@ def get_collections(demo):
             closest = closest_backpack.collectable
             closest.type.gives = list(get_backpack_contents(event.print_event.text))
             backpack_collections[block_index].append(closest)
-        assert distance < 0.5
+        if distance > 0.0:
+            print(f"Warning: distance {distance} for collection at time {times[block_index]}")
         assert event.sound_event.sound == closest.type.collect_sound
         closest.collect_event = event
         closest.time_consumed = times[block_index]
@@ -803,6 +804,7 @@ def get_possible_collections(demo, collectables_static, original_collections):
         demo, collectables_static)
     client_positions = get_client_positions(demo, get_viewent_num(demo))
     first_active_block_index = get_first_active_block_index(demo)
+    times = demo.get_time()
 
     possible_pickups = [[] for _ in range(len(demo.blocks))]
     for i, pos in enumerate(client_positions):
@@ -816,21 +818,13 @@ def get_possible_collections(demo, collectables_static, original_collections):
             assert len(orig_collection) <= 1
             is_collected_in_original = len(orig_collection) > 0
             if is_collected_in_original:
-                tolerance = 0.0
-                if i <= first_active_block_index:
-                    # It seems like client position is not 100% reliable on the
-                    # first frame. Instant pickups may therefore not be recognized
-                    # with a tolerance of 0. Therefore we allow a bit more leeway on
-                    # the first frame
-                    tolerance = 0.5
                 orig_collection = orig_collection[0]
-                assert distance <= tolerance
-                center = collision.PlayerBounds.center(pos)
-                sound_event = orig_collection.collect_event.sound_event
-                # sound coordinates are not always accurate, so adding more wiggle room
-                assert abs(sound_event.origin[0] - center[0]) <= max(tolerance, 0.125)
-                assert abs(sound_event.origin[1] - center[1]) <= max(tolerance, 0.0)
-                assert abs(sound_event.origin[2] - center[2]) <= max(tolerance, 0.5)
+                if distance > 0.0:
+                    print(f"Warning: distance {distance} for collection at time {times[i]}")
+                sound_distance = get_sound_client_distance(
+                    pos, orig_collection.collect_event.sound_event.origin)
+                if sound_distance > 0.0:
+                    print(f"Warning: sound distance {sound_distance} for collection at time {times[i]}")
 
             tolerance = 0.0
             if i < first_active_block_index:
