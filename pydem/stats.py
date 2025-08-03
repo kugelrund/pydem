@@ -1007,6 +1007,44 @@ class ActiveWeaponManager():
             self.disable_switch_required(player_index)
         return stats.activeweapon
 
+class MegaHealthTimer():
+    def __init__(self):
+        self.next_tick = math.inf
+
+    def start(self, time):
+        self.next_tick = time + 5.0 - (1.0 / 72.0)
+
+    def stop(self):
+        self.next_tick = math.inf
+
+    def update(self, time):
+        if time >= self.next_tick:
+            self.next_tick += 1.0
+            return True
+        return False
+
+def update_megahealth_status(stats, old_stats, old_stats_previous, time: float,
+                             megahealth_timer: MegaHealthTimer):
+    has_ticked = megahealth_timer.update(time)
+
+    if stats.health == old_stats.health:
+        if ((old_stats_previous.items & ItemFlags.SUPERHEALTH) and not (old_stats.items & ItemFlags.SUPERHEALTH)):
+            stats.items &= ~(ItemFlags.SUPERHEALTH)
+            megahealth_timer.stop()
+        # if health is equal, then we fully trust the original stats and don't
+        # try to reconstruct the megahealth status ourselves
+        return
+
+    if has_ticked:
+        assert (stats.items & ItemFlags.SUPERHEALTH)
+        if stats.health <= MAX_HEALTH:
+            stats.items &= ~(ItemFlags.SUPERHEALTH)
+            megahealth_timer.stop()
+            print("Warning: new stopping of mega health")
+        elif not (old_stats.items & ItemFlags.SUPERHEALTH):
+            print("Warning: guessing megahealth tick")
+            stats.health -= 1
+
 def rebuild_stats(start_stats_per_player: list[format.ClientStats],
                   demo_per_player: list[format.Demo],
                   old_static_collections_per_player,
@@ -1037,6 +1075,7 @@ def rebuild_stats(start_stats_per_player: list[format.ClientStats],
                                     for demo in demo_per_player]
     consumed_collectables_in_original = set()
     activeweapon_manager = ActiveWeaponManager(num_players)
+    megahealth_timer = [MegaHealthTimer() for _ in range(num_players)]
 
     while any(i < num_blocks for i, num_blocks in zip(i_per_player, num_blocks_per_player)):
         time_per_player = [times[i] for i, times in zip(i_per_player, times_per_player)]
@@ -1136,6 +1175,8 @@ def rebuild_stats(start_stats_per_player: list[format.ClientStats],
                     collected_value = collectable.get_pickup(stat_type)
                     stats[stat_type] = stat_type.bound(
                         stats[stat_type] + collected_value, stats.items)
+                if Item(ItemFlags.SUPERHEALTH) in collectable.type.gives:
+                    megahealth_timer[player_index].start(time)
                 collected_armor = collectable.get_pickup(Armor)
                 if collected_armor > 0:
                     stats.armor = collected_armor
@@ -1147,9 +1188,17 @@ def rebuild_stats(start_stats_per_player: list[format.ClientStats],
                 stats[stat_type] + backpack_value, stats.items)
 
         added_items = (old_stats.items & ~old_stats_previous.items)
-        removed_items = (~old_stats.items & old_stats_previous.items)
+        removed_items = (~old_stats.items & old_stats_previous.items) & (~ItemFlags.SUPERHEALTH)
         stats.items |= added_items
         stats.items &= ~removed_items
+
+        update_megahealth_status(stats, old_stats, old_stats_previous, time,
+                                 megahealth_timer[player_index])
+        # TODO: old_stats having megahealth and new stats not having
+        # megahealth would require us to identify and remove the ticks of
+        # health going down by 1 which is not supported yet
+        if (old_stats.items & ItemFlags.SUPERHEALTH):
+            assert (stats.items & ItemFlags.SUPERHEALTH)
 
         stats.weaponframe = old_stats.weaponframe
         stats.activeweapon = old_stats.activeweapon
