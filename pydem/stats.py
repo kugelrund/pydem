@@ -573,6 +573,9 @@ def get_static_collectables_bounds_per_frame(demo, collectables_static):
                     new_origin = [math.nan] * 3
                 collectables_bounds[m.num][i] = \
                     collectables_static[m.num].bounds(new_origin)
+        if not any(isinstance(m, messages.EntityUpdateMessage) for m in block.messages):
+            for entity_num in collectables_bounds:
+                collectables_bounds[entity_num][i] = collectables_bounds[entity_num][i-1]
     return collectables_bounds
 
 def get_static_collectables_by_frame(demo, collectables_static):
