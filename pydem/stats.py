@@ -623,7 +623,7 @@ def get_backpacks_by_frame(demo, models_precache):
                     if m.flags & messages.UpdateFlags.ORIGIN3:
                         origin[2] = m.origin[2]
                     backpacks_by_frame[i].append(CollectableActiveFrame(
-                        Collectable(m.num, CollectableBackpack, None, math.inf),
+                        Collectable(m.num, CollectableBackpack(), None, math.inf),
                         origin))
     return backpacks_by_frame
 
