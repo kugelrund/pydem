@@ -713,7 +713,7 @@ def get_backpack_contents(collection_text: bytes) -> typing.Iterator:
                rb'(?:([1-9]\d*) shells)?(?:, )?'
                rb'(?:([1-9]\d*) nails)?(?:, )?'
                rb'(?:([1-9]\d*) rockets)?(?:, )?'
-               rb'(?:([1-9]\d*) cells)?\\n')
+               rb'(?:([1-9]\d*) cells)?\n')
     match = re.match(pattern, collection_text)
     for i, stat_type in enumerate((Shells, Nails, Rockets, Cells)):
         if match.group(i+1):
