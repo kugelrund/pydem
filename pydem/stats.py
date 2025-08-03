@@ -1093,7 +1093,7 @@ def rebuild_stats(start_stats_per_player: list[format.ClientStats],
 
         if stats.armor == 0:
             stats.items &= ~(ItemFlags.ARMOR1|ItemFlags.ARMOR2|ItemFlags.ARMOR3)
-        #assert stats.health >= MIN_HEALTH
+        assert (stats.health >= MIN_HEALTH) == (old_stats.health >= MIN_HEALTH)
         assert stats.armor >= 0
 
         for stat_type in (Shells, Nails, Rockets, Cells):
