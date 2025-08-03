@@ -283,7 +283,7 @@ class TimeMessage:
 class PrintMessage:
     ID = 8
 
-    text: str
+    text: bytes
 
     def write(self, stream, protocol: Protocol):
         bindata.write_u8(stream, self.ID)
@@ -298,7 +298,7 @@ class PrintMessage:
 class StuffTextMessage:
     ID = 9
 
-    text: str
+    text: bytes
 
     def write(self, stream, protocol: Protocol):
         bindata.write_u8(stream, self.ID)
@@ -334,9 +334,9 @@ class ServerInfoMessage:
     protocol: Protocol
     max_clients: int
     gametype: int
-    levelname: str
-    models_precache: list[str]
-    sounds_precache: list[str]
+    levelname: bytes
+    models_precache: list[bytes]
+    sounds_precache: list[bytes]
 
     def write(self, stream, protocol: Protocol):
         protocol.change(self.protocol)
@@ -383,7 +383,7 @@ class LightstyleMessage:
     ID = 12
 
     index: int
-    map: str
+    map: bytes
 
     def write(self, stream, protocol: Protocol):
         bindata.write_u8(stream, self.ID)
@@ -401,7 +401,7 @@ class UpdateNameMessage:
     ID = 13
 
     player_id: int
-    name: str
+    name: bytes
 
     def write(self, stream, protocol: Protocol):
         bindata.write_u8(stream, self.ID)
@@ -1040,7 +1040,7 @@ class TempEntityBeam:
 
 @dataclasses.dataclass
 class TempEntityBeamName:
-    name: str
+    name: bytes
     beam: TempEntityBeam
 
     def write(self, stream, protocol: Protocol):
@@ -1127,7 +1127,7 @@ class SignOnNumMessage:
 class CenterPrintMessage:
     ID = 26
 
-    text: str
+    text: bytes
 
     def write(self, stream, protocol: Protocol):
         bindata.write_u8(stream, self.ID)
@@ -1218,7 +1218,7 @@ class IntermissionMessage:
 class FinaleMessage:
     ID = 31
 
-    text: str
+    text: bytes
 
     def write(self, stream, protocol: Protocol):
         bindata.write_u8(stream, self.ID)
@@ -1263,7 +1263,7 @@ class SellscreenMessage:
 class CutsceneMessage:
     ID = 34
 
-    text: str
+    text: bytes
 
     def write(self, stream, protocol: Protocol):
         bindata.write_u8(stream, self.ID)
@@ -1278,7 +1278,7 @@ class CutsceneMessage:
 class AchievementMessage:
     ID = 52
 
-    text: str
+    text: bytes
 
     def write(self, stream, protocol: Protocol):
         bindata.write_u8(stream, self.ID)

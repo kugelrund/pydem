@@ -11,7 +11,7 @@ from .messages import Protocol, ProtocolOverride, ProtocolVersion, ProtocolFlags
 @dataclasses.dataclass
 class CdTrack:
     MAX_CDTRACK_LEN = 12
-    cdtrack: str
+    cdtrack: bytes
 
     def write(self, stream):
         bindata.write_str(stream, self.cdtrack)

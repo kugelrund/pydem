@@ -635,7 +635,7 @@ def get_viewent_num(demo):
     assert all([m.viewentity_id == viewent_num for m in set_view_messages])
     return viewent_num
 
-def get_collection_sounds(demo: format.Demo, sounds_precache: list[str], viewent_num: int) -> typing.Iterator[SoundCollectEvent]:
+def get_collection_sounds(demo: format.Demo, sounds_precache: list[bytes], viewent_num: int) -> typing.Iterator[SoundCollectEvent]:
     for block_index, block in enumerate(demo.blocks):
         for m in block.messages:
             if isinstance(m, messages.SoundMessage):
@@ -667,7 +667,7 @@ def get_collection_prints(demo: format.Demo) -> typing.Iterator[PrintCollectEven
                         yield PrintCollectEvent(block_index, text)
                     text = b""
 
-def get_collection_events(demo: format.Demo, sounds_precache: list[str]) -> typing.Iterator[CollectEvent]:
+def get_collection_events(demo: format.Demo, sounds_precache: list[bytes]) -> typing.Iterator[CollectEvent]:
     viewent_num = get_viewent_num(demo)
     collection_sounds = get_collection_sounds(demo, sounds_precache, viewent_num)
     collection_prints = get_collection_prints(demo)
@@ -1251,7 +1251,7 @@ def remove_collection_print(print_event: PrintCollectEvent, demo: format.Demo):
         remaining_text = remaining_text.removeprefix(m.text)
 
 def add_collection_sound(collect_sound: CollectSound, client_pos: list[float],
-                         viewent_num: int, sounds_precache: list[str],
+                         viewent_num: int, sounds_precache: list[bytes],
                          block: format.Block):
     sound_name = collect_sound.value
     sound_num = sounds_precache.index(sound_name)
