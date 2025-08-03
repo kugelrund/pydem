@@ -115,7 +115,7 @@ def remove_pauses(demo: format.Demo):
                 entity_updates_after_unpause = entity_updates
 
 
-def remove_prints(demo: format.Demo, exclude_patterns=list[str]):
+def remove_prints(demo: format.Demo, exclude_patterns: list[str]):
     for block in demo.blocks:
         print_messages = [m for m in block.messages
                           if isinstance(m, messages.PrintMessage)]
@@ -124,7 +124,7 @@ def remove_prints(demo: format.Demo, exclude_patterns=list[str]):
                 block.messages.remove(m)
 
 
-def remove_sounds(demo: format.Demo, exclude_patterns=list[str]):
+def remove_sounds(demo: format.Demo, exclude_patterns: list[str]):
     _, sounds_precache = demo.get_precaches()
     for block in demo.blocks:
         sound_messages = [m for m in block.messages
