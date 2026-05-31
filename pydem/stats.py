@@ -1041,6 +1041,17 @@ def update_megahealth_status(stats, old_stats, old_stats_previous, time: float,
             print("Warning: guessing megahealth tick")
             stats.health -= 1
 
+def should_damage_be_applied(old_lost_health, damage, old_items_previous):
+    # we can only handle either fully ignored damage, or fully applied
+    # damage, not something in between
+    assert (
+        (old_lost_health == 0.0) or
+        (old_lost_health == damage.blood) or
+        # assuming one extra lost health is a megahealth tick down
+        (old_lost_health == damage.blood + 1 and (old_items_previous & ItemFlags.SUPERHEALTH))
+    )
+    return old_lost_health != 0.0
+
 def rebuild_stats(start_stats_per_player: list[format.ClientStats],
                   demo_per_player: list[format.Demo],
                   old_static_collections_per_player,
@@ -1122,10 +1133,7 @@ def rebuild_stats(start_stats_per_player: list[format.ClientStats],
                 print("Warning: Health/Armor reconstruction might be inaccurate")
             lost_armor = lost_armor_upper_bound
             stats.armor -= lost_armor
-            # we can only handle either fully ignored damage, or fully applied
-            # damage, not something in between
-            assert old_lost_health == 0.0 or old_lost_health == damage[i].blood
-            if old_lost_health != 0.0:
+            if should_damage_be_applied(old_lost_health, damage[i], old_stats_previous.items):
                 lost_health = old_damage_ceiled - lost_armor
                 stats.health -= lost_health
 
