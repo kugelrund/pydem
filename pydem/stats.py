@@ -1035,7 +1035,7 @@ def update_megahealth_status(stats, old_stats, old_stats_previous, time: float,
         if stats.health <= MAX_HEALTH:
             stats.items &= ~(ItemFlags.SUPERHEALTH)
             megahealth_timer.stop()
-            print("Warning: new stopping of mega health")
+            print(f"Warning: new stopping of mega health at time {time}")
         elif not (old_stats.items & ItemFlags.SUPERHEALTH):
             print("Warning: guessing megahealth tick")
             stats.health -= 1
