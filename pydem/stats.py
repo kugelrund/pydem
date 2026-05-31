@@ -707,7 +707,7 @@ def find_closest_collectable_frame_to_client(client_origin,
     return closest_collectable, closest_distance
 
 def get_backpack_contents(collection_text: bytes) -> typing.Iterator:
-    pattern = (b'You get '
+    pattern = (b'You (?:get|got) '
                rb'(?:([1-9]\d*) shells)?(?:, )?'
                rb'(?:([1-9]\d*) nails)?(?:, )?'
                rb'(?:([1-9]\d*) rockets)?(?:, )?'
@@ -758,7 +758,8 @@ def get_collections(demo):
             closest = closest_static.collectable
             static_collections[block_index].append(closest)
         else:
-            assert event.print_event.text.startswith(b'You get ')
+            assert (event.print_event.text.startswith(b'You get ')
+                    or event.print_event.text.startswith(b'You got '))
             backpacks_by_frame[block_index_previous].remove(closest_backpack)
             distance = distance_backpack
             closest = closest_backpack.collectable
