@@ -1187,7 +1187,8 @@ def rebuild_stats(start_stats_per_player: list[format.ClientStats],
                 stats[stat_type] + backpack_value, stats.items)
 
         added_items = (old_stats.items & ~old_stats_previous.items)
-        removed_items = (~old_stats.items & old_stats_previous.items) & (~ItemFlags.SUPERHEALTH)
+        ignored_removed_items = (ItemFlags.SUPERHEALTH|ItemFlags.ARMOR1|ItemFlags.ARMOR2|ItemFlags.ARMOR3)
+        removed_items = (~old_stats.items & old_stats_previous.items) & ~ignored_removed_items
         stats.items |= added_items
         stats.items &= ~removed_items
 
