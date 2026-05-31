@@ -1195,7 +1195,7 @@ def rebuild_stats(start_stats_per_player: list[format.ClientStats],
         # TODO: old_stats having megahealth and new stats not having
         # megahealth would require us to identify and remove the ticks of
         # health going down by 1 which is not supported yet
-        if (old_stats.items & ItemFlags.SUPERHEALTH):
+        if (old_stats.items & ItemFlags.SUPERHEALTH) and (old_stats.health < old_stats_previous.health):
             assert (stats.items & ItemFlags.SUPERHEALTH)
 
         stats.weaponframe = old_stats.weaponframe
